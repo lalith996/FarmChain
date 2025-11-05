@@ -24,6 +24,7 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         uint256 createdAt;
         uint256 releaseTime;
         bool disputed;
+        uint256 feePercent; // FIX #6: Store fee at creation time
     }
     
     // State variables
@@ -92,7 +93,8 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
             status: PaymentStatus.Escrowed,
             createdAt: block.timestamp,
             releaseTime: _releaseTime,
-            disputed: false
+            disputed: false,
+            feePercent: platformFeePercent // FIX #6: Lock fee at creation
         });
         
         orderToPayment[_orderId] = newPaymentId;
@@ -117,16 +119,18 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         Payment storage payment = payments[_paymentId];
         require(payment.status == PaymentStatus.Escrowed, "Invalid payment status");
         require(!payment.disputed, "Payment is disputed");
+        
+        // FIX #7: Only buyer or owner can release, remove auto-release from anyone
         require(
             msg.sender == payment.buyer || 
-            msg.sender == owner() ||
-            block.timestamp >= payment.releaseTime,
-            "Not authorized to release"
+            msg.sender == owner(),
+            "Only buyer or owner can release"
         );
         
         payment.status = PaymentStatus.Released;
         
-        uint256 platformFee = (payment.amount * platformFeePercent) / 100;
+        // FIX #6: Use fee from payment creation, not current global fee
+        uint256 platformFee = (payment.amount * payment.feePercent) / 100;
         uint256 sellerAmount = payment.amount - platformFee;
         
         // Transfer to seller
@@ -291,8 +295,9 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
     // Admin functions
     
     /**
-     * @dev Update platform fee percentage
+     * @dev Update platform fee percentage (FIX #6: Cannot affect existing escrows)
      * @param _newFee New fee percentage
+     * @notice Fee changes only apply to NEW payments created after this call
      */
     function setPlatformFee(uint256 _newFee) external onlyOwner {
         require(_newFee <= MAX_FEE_PERCENT, "Fee cannot exceed maximum");
@@ -327,13 +332,27 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
     }
     
     /**
-     * @dev Emergency withdraw (only for stuck funds, requires pause)
+     * @dev Emergency withdraw - FIX #2: Only withdraw unclaimed/stuck funds after 180 days
+     * @notice Can only withdraw funds from payments older than 180 days that are still in escrow
      */
     function emergencyWithdraw() external onlyOwner whenPaused {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance to withdraw");
+        uint256 withdrawableAmount = 0;
         
-        (bool success, ) = owner().call{value: balance}("");
+        // Only count funds from payments older than 180 days still in escrow
+        for (uint256 i = 1; i <= paymentCounter; i++) {
+            Payment storage payment = payments[i];
+            if (
+                payment.status == PaymentStatus.Escrowed &&
+                block.timestamp >= payment.createdAt + 180 days
+            ) {
+                withdrawableAmount += payment.amount;
+                payment.status = PaymentStatus.Refunded; // Mark as refunded
+            }
+        }
+        
+        require(withdrawableAmount > 0, "No withdrawable funds");
+        
+        (bool success, ) = owner().call{value: withdrawableAmount}("");
         require(success, "Withdrawal failed");
     }
     

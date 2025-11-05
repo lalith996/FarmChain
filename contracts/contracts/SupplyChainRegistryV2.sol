@@ -306,17 +306,21 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
      * @param _productId Product ID
      * @param _to New owner address
      * @param _location Transfer location
-     * @param _transferPrice Price of transfer
+     * @param _transferPrice Price of transfer (must be paid)
      */
     function transferOwnership(
         uint256 _productId,
         address _to,
         string memory _location,
         uint256 _transferPrice
-    ) external productExists(_productId) onlyProductOwner(_productId) nonReentrant {
+    ) external payable productExists(_productId) onlyProductOwner(_productId) nonReentrant {
         require(_to != address(0), "Invalid recipient address");
         require(_to != msg.sender, "Cannot transfer to self");
         require(products[_productId].isApproved, "Product must be approved first");
+        
+        // FIX #3: Enforce payment - msg.value must match transferPrice
+        require(msg.value == _transferPrice, "Payment must match transfer price");
+        require(_transferPrice > 0, "Transfer price must be greater than 0");
 
         // Verify recipient has appropriate role
         require(
@@ -326,8 +330,11 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
             "Recipient must have buyer role"
         );
 
-        // Update ownership
+        // FIX #4: Remove product from previous owner's array
         address previousOwner = currentOwner[_productId];
+        _removeProductFromUser(previousOwner, _productId);
+        
+        // Update ownership
         currentOwner[_productId] = _to;
         userProducts[_to].push(_productId);
 
@@ -344,6 +351,10 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
         // Update product status
         Product storage product = products[_productId];
         product.updatedAt = block.timestamp;
+        
+        // FIX #3: Transfer payment to previous owner
+        (bool success, ) = previousOwner.call{value: msg.value}("");
+        require(success, "Payment transfer failed");
 
         emit OwnershipTransferred(
             _productId,
@@ -535,6 +546,23 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
         );
 
         productsCreatedToday[_user]++;
+    }
+    
+    /**
+     * @dev Remove product from user's array (FIX #4: Clean up ownership tracking)
+     * @param _user User address
+     * @param _productId Product ID to remove
+     */
+    function _removeProductFromUser(address _user, uint256 _productId) internal {
+        uint256[] storage userProductList = userProducts[_user];
+        for (uint256 i = 0; i < userProductList.length; i++) {
+            if (userProductList[i] == _productId) {
+                // Move last element to this position and pop
+                userProductList[i] = userProductList[userProductList.length - 1];
+                userProductList.pop();
+                break;
+            }
+        }
     }
 
     /**

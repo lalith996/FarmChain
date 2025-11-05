@@ -20,15 +20,13 @@
   "author": "AgriChain Team",
   "license": "MIT",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "@nomiclabs/hardhat-ethers": "^2.2.3",
-    "@nomiclabs/hardhat-etherscan": "^3.1.7",
-    "hardhat": "^2.19.4",
-    "hardhat-gas-reporter": "^1.0.9"
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "chai": "^4.3.10"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
     "dotenv": "^16.3.1",
-    "ethers": "^6.10.0"
+    "ethers": "^6.13.0"
   }
 }

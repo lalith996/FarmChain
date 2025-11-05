@@ -27,7 +27,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
         uint256 productId;
         string name;
         string category;
-        address farmer;
+        address farmer; // FIX #5: This now stores ORIGINAL FARMER only, not current owner
         uint256 harvestDate;
         uint256 quantity;
         string unit;
@@ -45,6 +45,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
         uint256 timestamp;
         string location;
         uint256 blockNumber;
+        uint256 transferPrice; // FIX #3: Add price to track payments
     }
     
     struct QualityCheck {
@@ -61,6 +62,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
     mapping(uint256 => OwnershipTransfer[]) public productHistory;
     mapping(uint256 => QualityCheck[]) public qualityChecks;
     mapping(address => uint256[]) public userProducts;
+    mapping(uint256 => address) public currentOwner; // FIX #5: Track current owner separately
     
     // Events
     event ProductRegistered(
@@ -107,8 +109,9 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
     
     // Modifiers
     modifier onlyProductOwner(uint256 _productId) {
+        // FIX #5: Use currentOwner mapping, not product.farmer
         require(
-            products[_productId].farmer == msg.sender ||
+            currentOwner[_productId] == msg.sender ||
             hasRole(ADMIN_ROLE, msg.sender),
             "Not authorized"
         );
@@ -158,7 +161,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
             productId: newProductId,
             name: _name,
             category: _category,
-            farmer: msg.sender,
+            farmer: msg.sender, // FIX #5: This stores ORIGINAL farmer, never changes
             harvestDate: _harvestDate,
             quantity: _quantity,
             unit: _unit,
@@ -170,14 +173,16 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
             createdAt: block.timestamp
         });
         
+        currentOwner[newProductId] = msg.sender; // FIX #5: Set initial owner
         userProducts[msg.sender].push(newProductId);
         
         productHistory[newProductId].push(OwnershipTransfer({
             from: address(0),
             to: msg.sender,
             timestamp: block.timestamp,
-            location: "Farm",
-            blockNumber: block.number
+            location: "Farm Registration",
+            blockNumber: block.number,
+            transferPrice: 0 // FIX #3: Initial registration has no price
         }));
         
         emit ProductRegistered(
@@ -192,16 +197,18 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
     }
     
     /**
-     * @dev Transfer product ownership
+     * @dev Transfer product ownership with payment enforcement
      * @param _productId Product ID to transfer
      * @param _to New owner address
      * @param _location Current location
+     * @param _transferPrice Price of transfer
      */
     function transferOwnership(
         uint256 _productId,
         address _to,
-        string memory _location
-    ) external 
+        string memory _location,
+        uint256 _transferPrice
+    ) external payable
         productExists(_productId)
         onlyProductOwner(_productId)
         whenNotPaused
@@ -215,19 +222,32 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
             "Invalid recipient role"
         );
         
-        Product storage product = products[_productId];
-        address previousOwner = product.farmer;
-        product.farmer = _to;
+        // FIX #3: Enforce payment
+        require(msg.value == _transferPrice, "Payment must match transfer price");
+        require(_transferPrice > 0, "Transfer price must be greater than 0");
+        
+        address previousOwner = currentOwner[_productId]; // FIX #5: Use currentOwner
+        
+        // FIX #4: Remove from previous owner's array
+        _removeProductFromUser(previousOwner, _productId);
+        
+        // Update current owner (product.farmer stays as original farmer)
+        currentOwner[_productId] = _to;
         
         productHistory[_productId].push(OwnershipTransfer({
             from: previousOwner,
             to: _to,
             timestamp: block.timestamp,
             location: _location,
-            blockNumber: block.number
+            blockNumber: block.number,
+            transferPrice: _transferPrice // FIX #3: Store price
         }));
         
         userProducts[_to].push(_productId);
+        
+        // FIX #3: Transfer payment to previous owner
+        (bool success, ) = previousOwner.call{value: msg.value}("");
+        require(success, "Payment transfer failed");
         
         emit OwnershipTransferred(
             _productId,
@@ -420,7 +440,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
     }
     
     /**
-     * @dev Get current product owner
+     * @dev Get current product owner (FIX #5: Return currentOwner, not farmer)
      * @param _productId Product ID
      * @return address Current owner address
      */
@@ -430,7 +450,24 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
         productExists(_productId)
         returns (address) 
     {
-        return products[_productId].farmer;
+        return currentOwner[_productId];
+    }
+    
+    /**
+     * @dev Remove product from user's array (FIX #4: Clean up ownership tracking)
+     * @param _user User address
+     * @param _productId Product ID to remove
+     */
+    function _removeProductFromUser(address _user, uint256 _productId) internal {
+        uint256[] storage userProductList = userProducts[_user];
+        for (uint256 i = 0; i < userProductList.length; i++) {
+            if (userProductList[i] == _productId) {
+                // Move last element to this position and pop
+                userProductList[i] = userProductList[userProductList.length - 1];
+                userProductList.pop();
+                break;
+            }
+        }
     }
     
     // Admin functions
