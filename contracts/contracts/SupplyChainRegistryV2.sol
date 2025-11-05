@@ -322,11 +322,14 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
         require(msg.value == _transferPrice, "Payment must match transfer price");
         require(_transferPrice > 0, "Transfer price must be greater than 0");
 
+        // GAS OPT #5: Cache role checks to avoid multiple external calls
+        bool hasDistributorRole = accessControl.hasRole(accessControl.DISTRIBUTOR_ROLE(), _to);
+        bool hasRetailerRole = accessControl.hasRole(accessControl.RETAILER_ROLE(), _to);
+        bool hasConsumerRole = accessControl.hasRole(accessControl.CONSUMER_ROLE(), _to);
+        
         // Verify recipient has appropriate role
         require(
-            accessControl.hasRole(accessControl.DISTRIBUTOR_ROLE(), _to) ||
-            accessControl.hasRole(accessControl.RETAILER_ROLE(), _to) ||
-            accessControl.hasRole(accessControl.CONSUMER_ROLE(), _to),
+            hasDistributorRole || hasRetailerRole || hasConsumerRole,
             "Recipient must have buyer role"
         );
 
@@ -508,13 +511,49 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
     }
 
     /**
-     * @dev Get user's products
+     * @dev Get user's products (GAS OPT #2: Added pagination)
      * @param _user User address
+     * @param _offset Starting index
+     * @param _limit Maximum number of results
+     * @return uint256[] Array of product IDs
+     * @return uint256 Total count
      */
     function getUserProducts(
+        address _user,
+        uint256 _offset,
+        uint256 _limit
+    ) external view returns (uint256[] memory, uint256) {
+        uint256[] memory allProducts = userProducts[_user];
+        uint256 totalCount = allProducts.length;
+        
+        if (_offset >= totalCount) {
+            return (new uint256[](0), totalCount);
+        }
+        
+        uint256 end = _offset + _limit;
+        if (end > totalCount) {
+            end = totalCount;
+        }
+        
+        uint256 resultSize = end - _offset;
+        uint256[] memory result = new uint256[](resultSize);
+        
+        for (uint256 i = 0; i < resultSize; i++) {
+            result[i] = allProducts[_offset + i];
+        }
+        
+        return (result, totalCount);
+    }
+    
+    /**
+     * @dev Get product count for a user (GAS OPT #2: Efficient count)
+     * @param _user User address
+     * @return uint256 Number of products owned
+     */
+    function getUserProductCount(
         address _user
-    ) external view returns (uint256[] memory) {
-        return userProducts[_user];
+    ) external view returns (uint256) {
+        return userProducts[_user].length;
     }
 
     /**

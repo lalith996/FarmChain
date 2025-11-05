@@ -363,30 +363,38 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @dev Get all roles for an account
+     * @dev Get all roles for an account (GAS OPT #4: Single-pass algorithm)
      * @param account The account to check
      * @return An array of role hashes
      */
     function getRoles(address account) external view returns (bytes32[] memory) {
-        bytes32[] memory allRoles = new bytes32[](6);
-        allRoles[0] = SUPER_ADMIN_ROLE;
-        allRoles[1] = ADMIN_ROLE;
-        allRoles[2] = FARMER_ROLE;
-        allRoles[3] = DISTRIBUTOR_ROLE;
-        allRoles[4] = RETAILER_ROLE;
-        allRoles[5] = CONSUMER_ROLE;
+        // GAS OPT #4: Use fixed array of all possible roles
+        bytes32[6] memory allRoles = [
+            SUPER_ADMIN_ROLE,
+            ADMIN_ROLE,
+            FARMER_ROLE,
+            DISTRIBUTOR_ROLE,
+            RETAILER_ROLE,
+            CONSUMER_ROLE
+        ];
 
+        // GAS OPT #4: Count roles in single pass
         uint256 count = 0;
-        for (uint256 i = 0; i < allRoles.length; i++) {
+        bool[6] memory hasRoleFlags;
+        
+        for (uint256 i = 0; i < 6; i++) {
             if (hasRole(allRoles[i], account)) {
+                hasRoleFlags[i] = true;
                 count++;
             }
         }
 
+        // GAS OPT #4: Build result array directly using flags (no second loop)
         bytes32[] memory userRoles = new bytes32[](count);
         uint256 index = 0;
-        for (uint256 i = 0; i < allRoles.length; i++) {
-            if (hasRole(allRoles[i], account)) {
+        
+        for (uint256 i = 0; i < 6; i++) {
+            if (hasRoleFlags[i]) {
                 userRoles[index] = allRoles[i];
                 index++;
             }

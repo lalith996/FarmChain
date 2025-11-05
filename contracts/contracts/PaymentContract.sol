@@ -117,6 +117,12 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         whenNotPaused
     {
         Payment storage payment = payments[_paymentId];
+        
+        // GAS OPT #3: Cache storage reads in memory
+        uint256 amount = payment.amount;
+        uint256 feePercent = payment.feePercent;
+        address seller = payment.seller;
+        
         require(payment.status == PaymentStatus.Escrowed, "Invalid payment status");
         require(!payment.disputed, "Payment is disputed");
         
@@ -129,19 +135,10 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         
         payment.status = PaymentStatus.Released;
         
-        // FIX #6: Use fee from payment creation, not current global fee
-        uint256 platformFee = (payment.amount * payment.feePercent) / 100;
-        uint256 sellerAmount = payment.amount - platformFee;
+        // GAS OPT #1: Use internal function to avoid duplicate logic
+        _transferPaymentToSeller(seller, amount, feePercent);
         
-        // Transfer to seller
-        (bool successSeller, ) = payment.seller.call{value: sellerAmount}("");
-        require(successSeller, "Transfer to seller failed");
-        
-        // Transfer platform fee
-        (bool successPlatform, ) = platformWallet.call{value: platformFee}("");
-        require(successPlatform, "Platform fee transfer failed");
-        
-        emit PaymentReleased(_paymentId, payment.amount, block.timestamp);
+        emit PaymentReleased(_paymentId, amount, block.timestamp);
     }
     
     /**
@@ -174,6 +171,13 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         nonReentrant 
     {
         Payment storage payment = payments[_paymentId];
+        
+        // GAS OPT #3: Cache storage reads in memory
+        uint256 amount = payment.amount;
+        address buyer = payment.buyer;
+        address seller = payment.seller;
+        uint256 feePercent = payment.feePercent;
+        
         require(payment.disputed, "No dispute to resolve");
         require(payment.status == PaymentStatus.Escrowed, "Invalid payment status");
         
@@ -181,23 +185,16 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         
         if (refundBuyer) {
             payment.status = PaymentStatus.Refunded;
-            (bool success, ) = payment.buyer.call{value: payment.amount}("");
+            (bool success, ) = buyer.call{value: amount}("");
             require(success, "Refund failed");
-            winner = payment.buyer;
-            emit PaymentRefunded(_paymentId, payment.amount, block.timestamp);
+            winner = buyer;
+            emit PaymentRefunded(_paymentId, amount, block.timestamp);
         } else {
             payment.status = PaymentStatus.Released;
-            uint256 platformFee = (payment.amount * platformFeePercent) / 100;
-            uint256 sellerAmount = payment.amount - platformFee;
-            
-            (bool successSeller, ) = payment.seller.call{value: sellerAmount}("");
-            require(successSeller, "Transfer to seller failed");
-            
-            (bool successPlatform, ) = platformWallet.call{value: platformFee}("");
-            require(successPlatform, "Platform fee transfer failed");
-            
-            winner = payment.seller;
-            emit PaymentReleased(_paymentId, payment.amount, block.timestamp);
+            // GAS OPT #1: Use internal function to avoid duplicate logic
+            _transferPaymentToSeller(seller, amount, feePercent);
+            winner = seller;
+            emit PaymentReleased(_paymentId, amount, block.timestamp);
         }
         
         payment.disputed = false;
@@ -258,16 +255,51 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
     }
     
     /**
-     * @dev Get all payments for a user
+     * @dev Get all payments for a user (GAS OPT #2: Added pagination to prevent unbounded array)
      * @param _user User address
+     * @param _offset Starting index
+     * @param _limit Maximum number of results
      * @return uint256[] Array of payment IDs
+     * @return uint256 Total count
      */
-    function getUserPayments(address _user) 
+    function getUserPayments(address _user, uint256 _offset, uint256 _limit) 
         external 
         view 
-        returns (uint256[] memory) 
+        returns (uint256[] memory, uint256) 
     {
-        return userPayments[_user];
+        uint256[] memory allPayments = userPayments[_user];
+        uint256 totalCount = allPayments.length;
+        
+        if (_offset >= totalCount) {
+            return (new uint256[](0), totalCount);
+        }
+        
+        uint256 end = _offset + _limit;
+        if (end > totalCount) {
+            end = totalCount;
+        }
+        
+        uint256 resultSize = end - _offset;
+        uint256[] memory result = new uint256[](resultSize);
+        
+        for (uint256 i = 0; i < resultSize; i++) {
+            result[i] = allPayments[_offset + i];
+        }
+        
+        return (result, totalCount);
+    }
+    
+    /**
+     * @dev Get payment count for a user (GAS OPT #2: Efficient count without returning array)
+     * @param _user User address
+     * @return uint256 Number of payments
+     */
+    function getUserPaymentCount(address _user) 
+        external 
+        view 
+        returns (uint256) 
+    {
+        return userPayments[_user].length;
     }
     
     /**
@@ -354,6 +386,30 @@ contract PaymentContract is ReentrancyGuard, Ownable, Pausable {
         
         (bool success, ) = owner().call{value: withdrawableAmount}("");
         require(success, "Withdrawal failed");
+    }
+    
+    /**
+     * @dev GAS OPT #1: Internal function to transfer payment to seller (DRY - Don't Repeat Yourself)
+     * @param _seller Seller address
+     * @param _amount Total payment amount
+     * @param _feePercent Fee percentage locked at creation
+     */
+    function _transferPaymentToSeller(
+        address _seller,
+        uint256 _amount,
+        uint256 _feePercent
+    ) internal {
+        // Calculate fees
+        uint256 platformFee = (_amount * _feePercent) / 100;
+        uint256 sellerAmount = _amount - platformFee;
+        
+        // Transfer to seller
+        (bool successSeller, ) = _seller.call{value: sellerAmount}("");
+        require(successSeller, "Transfer to seller failed");
+        
+        // Transfer platform fee
+        (bool successPlatform, ) = platformWallet.call{value: platformFee}("");
+        require(successPlatform, "Platform fee transfer failed");
     }
     
     // Fallback and receive functions
