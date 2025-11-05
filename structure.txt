@@ -1,0 +1,66 @@
+.
+├── PROJECT_STATUS.md
+├── README.md
+├── SETUP_GUIDE.md
+├── backend
+│   ├── Dockerfile
+│   ├── logs
+│   │   ├── combined.log
+│   │   ├── error.log
+│   │   ├── exceptions.log
+│   │   └── rejections.log
+│   ├── package-lock.json
+│   ├── package.json
+│   └── src
+│       ├── app.js
+│       ├── config
+│       ├── controllers
+│       ├── middleware
+│       ├── models
+│       ├── routes
+│       ├── server.js
+│       ├── services
+│       └── utils
+├── contracts
+│   ├── contracts
+│   │   ├── AccessControl.sol
+│   │   ├── PaymentContract.sol
+│   │   ├── SupplyChainRegistry.sol
+│   │   └── SupplyChainRegistryV2.sol
+│   ├── hardhat.config.js
+│   ├── package.json
+│   ├── scripts
+│   │   └── deploy.js
+│   └── test
+│       ├── PaymentContract.test.js
+│       └── SupplyChainRegistry.test.js
+├── docker-compose.yml
+├── frontend
+│   ├── README.md
+│   ├── eslint.config.mjs
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── src
+│   │   ├── app
+│   │   ├── components
+│   │   ├── config
+│   │   ├── contexts
+│   │   ├── hooks
+│   │   ├── index.ts
+│   │   ├── lib
+│   │   ├── store
+│   │   └── types
+│   └── tsconfig.json
+├── package-lock.json
+└── structure.txt
+
+26 directories, 38 files

@@ -1,0 +1,130 @@
+.
+├── PROJECT_STATUS.md
+├── README.md
+├── SETUP_GUIDE.md
+├── backend
+│   ├── Dockerfile
+│   ├── package-lock.json
+│   ├── package.json
+│   └── src
+│       ├── app.js
+│       ├── config
+│       │   ├── blockchain.js
+│       │   └── database.js
+│       ├── controllers
+│       │   ├── admin.controller.js
+│       │   ├── auth.controller.js
+│       │   ├── blockchain.controller.js
+│       │   ├── notification.controller.js
+│       │   ├── order.controller.js
+│       │   ├── payment.controller.js
+│       │   ├── product.controller.js
+│       │   ├── rbacAdmin.controller.js
+│       │   ├── user.controller.js
+│       │   └── verification.controller.js
+│       ├── middleware
+│       │   ├── audit.middleware.js
+│       │   ├── auth.js
+│       │   ├── auth.middleware.js
+│       │   ├── errorHandler.js
+│       │   ├── rateLimit.middleware.js
+│       │   └── validation.middleware.js
+│       ├── models
+│       │   ├── AuditLog.model.js
+│       │   ├── Order.model.js
+│       │   ├── Permission.model.js
+│       │   ├── Product.model.js
+│       │   ├── RateLimitTracker.model.js
+│       │   ├── Role.model.js
+│       │   ├── User.model.js
+│       │   └── UserRBAC.model.js
+│       ├── routes
+│       │   ├── admin.routes.js
+│       │   ├── ai.routes.js
+│       │   ├── auth.routes.js
+│       │   ├── blockchain.routes.js
+│       │   ├── ipfs.routes.js
+│       │   ├── notification.routes.js
+│       │   ├── order.routes.js
+│       │   ├── payment.routes.js
+│       │   ├── product.routes.js
+│       │   ├── rbac.routes.js
+│       │   └── user.routes.js
+│       ├── server.js
+│       ├── services
+│       │   ├── auth.service.js
+│       │   ├── rateLimit.service.js
+│       │   ├── rbac.service.js
+│       │   └── verification.service.js
+│       └── utils
+│           └── logger.js
+├── contracts
+│   ├── contracts
+│   │   ├── AccessControl.sol
+│   │   ├── PaymentContract.sol
+│   │   ├── SupplyChainRegistry.sol
+│   │   └── SupplyChainRegistryV2.sol
+│   ├── hardhat.config.js
+│   ├── package.json
+│   ├── scripts
+│   │   └── deploy.js
+│   └── test
+│       ├── PaymentContract.test.js
+│       └── SupplyChainRegistry.test.js
+├── docker-compose.yml
+├── frontend
+│   ├── README.md
+│   ├── eslint.config.mjs
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── src
+│   │   ├── app
+│   │   │   ├── admin
+│   │   │   ├── auth
+│   │   │   ├── checkout
+│   │   │   ├── dashboard
+│   │   │   ├── favicon.ico
+│   │   │   ├── globals.css
+│   │   │   ├── layout.tsx
+│   │   │   ├── orders
+│   │   │   ├── page.tsx
+│   │   │   ├── products
+│   │   │   ├── profile
+│   │   │   └── settings
+│   │   ├── components
+│   │   │   ├── admin
+│   │   │   ├── auth
+│   │   │   ├── guards
+│   │   │   ├── kyc
+│   │   │   ├── layout
+│   │   │   ├── orders
+│   │   │   ├── products
+│   │   │   └── providers
+│   │   ├── config
+│   │   │   └── wagmi.ts
+│   │   ├── contexts
+│   │   │   └── AuthContext.tsx
+│   │   ├── hooks
+│   │   │   └── useAuth.ts
+│   │   ├── index.ts
+│   │   ├── lib
+│   │   │   └── api.ts
+│   │   ├── store
+│   │   │   └── authStore.ts
+│   │   └── types
+│   │       └── index.ts
+│   └── tsconfig.json
+├── package-lock.json
+├── structure.txt
+└── structure_detailed.txt
+
+41 directories, 87 files
