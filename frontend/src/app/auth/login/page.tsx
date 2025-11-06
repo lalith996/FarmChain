@@ -39,19 +39,20 @@ export default function LoginPage() {
 
       // Step 1: Request nonce from backend
       const nonceResponse = await authAPI.requestNonce(address);
-      const { nonce } = nonceResponse;
+      const { nonce } = nonceResponse.data; // Backend wraps in { success, data, message }
 
-      // Step 2: Create message to sign
-      const message = `Welcome to FarmChain!\n\nPlease sign this message to authenticate your wallet.\n\nWallet: ${address}\nNonce: ${nonce}\nTimestamp: ${new Date().toISOString()}`;
+      // Step 2: Create message to sign (MUST match backend format exactly)
+      const timestamp = Date.now(); // Unix timestamp in milliseconds
+      const message = `Sign this message to login to AgriChain.\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
       // Step 3: Request signature from user's wallet
       const signature = await signMessageAsync({ message });
 
       // Step 4: Send signature to backend for verification
-      const loginResponse = await authAPI.login(address, signature, nonce);
+      const loginResponse = await authAPI.login(address, signature, message, nonce);
 
-      // Step 5: Store authentication data
-      const { user, accessToken, refreshToken } = loginResponse;
+      // Step 5: Store authentication data (unwrap backend response)
+      const { user, accessToken, refreshToken } = loginResponse.data;
 
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
