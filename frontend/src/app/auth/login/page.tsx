@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount, useConnect, useSignMessage } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import {
   LockClosedIcon,
@@ -10,12 +10,14 @@ import {
   BoltIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
+import { authAPI, handleApiError } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
+  const { signMessageAsync } = useSignMessage();
   const { login } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -35,181 +37,55 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      // TEMPORARY: Development authentication bypass
-      console.log('🚀 Authenticating wallet:', address);
-      
-      // Map wallet addresses to roles (one wallet = one role)
-      const walletToRole: Record<string, any> = {
-        '0xf0555abf16e154574bc3b4a9190f958ccdfce886': {
-          _id: 'admin-user-001',
-          walletAddress: '0xf0555abf16e154574bc3b4a9190f958ccdfce886',
-          primaryRole: 'SUPER_ADMIN',
-          role: 'admin',
-          roles: ['SUPER_ADMIN', 'admin'],
-          rating: {
-            average: 5.0,
-            count: 150
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          profile: {
-            name: 'Admin User',
-            email: 'admin@farmchain.com',
-            phone: '+1234567890',
-            bio: 'System Administrator',
-            avatar: ''
-          },
-          verification: {
-            isVerified: true,
-            kycStatus: 'approved'
-          },
-          status: {
-            isActive: true,
-            isSuspended: false
-          }
-        },
-        '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1': {
-          _id: 'farmer-user-001',
-          walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1',
-          primaryRole: 'FARMER',
-          role: 'farmer',
-          roles: ['FARMER'],
-          rating: {
-            average: 4.8,
-            count: 86
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          profile: {
-            name: 'John Farmer',
-            email: 'farmer@farmchain.com',
-            phone: '+1234567891',
-            bio: 'Organic vegetable farmer',
-            avatar: ''
-          },
-          verification: {
-            isVerified: true,
-            kycStatus: 'approved'
-          },
-          status: {
-            isActive: true,
-            isSuspended: false
-          }
-        },
-        '0xafe9c2a21650c800d3d8b6a638e61bb513046ea7': {
-          _id: 'distributor-user-001',
-          walletAddress: '0xafe9c2a21650c800d3d8b6a638e61bb513046ea7',
-          primaryRole: 'DISTRIBUTOR',
-          role: 'distributor',
-          roles: ['DISTRIBUTOR'],
-          rating: {
-            average: 4.5,
-            count: 42
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          profile: {
-            name: 'Distribution Co',
-            email: 'distributor@farmchain.com',
-            phone: '+1234567892',
-            bio: 'Regional distributor',
-            avatar: ''
-          },
-          verification: {
-            isVerified: true,
-            kycStatus: 'approved'
-          },
-          status: {
-            isActive: true,
-            isSuspended: false
-          }
-        },
-        '0xf75a95a93af19896379635e2bb2283c32bfbf935': {
-          _id: 'consumer-user-001',
-          walletAddress: '0xf75a95a93af19896379635e2bb2283c32bfbf935',
-          primaryRole: 'CONSUMER',
-          role: 'consumer',
-          roles: ['CONSUMER'],
-          rating: {
-            average: 5.0,
-            count: 28
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          profile: {
-            name: 'Jane Consumer',
-            email: 'consumer@farmchain.com',
-            phone: '+1234567893',
-            bio: 'Health-conscious buyer',
-            avatar: ''
-          },
-          verification: {
-            isVerified: true,
-            kycStatus: 'approved'
-          },
-          status: {
-            isActive: true,
-            isSuspended: false
-          }
-        },
-        '0x04e98450e3051a2acfd1d96113481252f0013f77': {
-          _id: 'retailer-user-001',
-          walletAddress: '0x04e98450e3051a2acfd1d96113481252f0013f77',
-          primaryRole: 'RETAILER',
-          role: 'retailer',
-          roles: ['RETAILER'],
-          rating: {
-            average: 4.7,
-            count: 94
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          profile: {
-            name: 'Retail Store',
-            email: 'retailer@farmchain.com',
-            phone: '+1234567894',
-            bio: 'Fresh produce retailer',
-            avatar: ''
-          },
-          verification: {
-            isVerified: true,
-            kycStatus: 'approved'
-          },
-          status: {
-            isActive: true,
-            isSuspended: false
-          }
-        }
-      };
-      
-      // Get user data based on wallet address (default to admin if not found)
-      const userData = walletToRole[address.toLowerCase()] || walletToRole['0xf0555abf16e154574bc3b4a9190f958ccdfce886'];
+      // Step 1: Request nonce from backend
+      const nonceResponse = await authAPI.requestNonce(address);
+      const { nonce } = nonceResponse;
 
-      const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' + Date.now();
-      
-      // Store in localStorage (matching AuthContext structure)
-      localStorage.setItem('accessToken', authToken);
-      localStorage.setItem('refreshToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh.' + Date.now());
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('authToken', authToken); // For authStore
-      
-      // Call the login function from store
-      login(userData, authToken);
+      // Step 2: Create message to sign
+      const message = `Welcome to FarmChain!\n\nPlease sign this message to authenticate your wallet.\n\nWallet: ${address}\nNonce: ${nonce}\nTimestamp: ${new Date().toISOString()}`;
 
-      toast.success(`Welcome back, ${userData.profile.name}! 🎉`);
-      
+      // Step 3: Request signature from user's wallet
+      const signature = await signMessageAsync({ message });
+
+      // Step 4: Send signature to backend for verification
+      const loginResponse = await authAPI.login(address, signature, nonce);
+
+      // Step 5: Store authentication data
+      const { user, accessToken, refreshToken } = loginResponse;
+
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('authToken', accessToken); // For authStore compatibility
+
+      // Update auth store
+      login(user, accessToken);
+
+      toast.success(`Welcome back, ${user.profile?.name || 'User'}! 🎉`);
+
       // Redirect based on role
       setTimeout(() => {
-        if (userData.role === 'admin') {
+        if (user.primaryRole === 'SUPER_ADMIN' || user.role === 'admin') {
           router.push('/admin');
         } else {
           router.push('/dashboard');
         }
       }, 500);
-      
     } catch (error: unknown) {
       console.error('Login failed:', error);
-      toast.error('Login failed. Please try again.');
+      const apiError = handleApiError(error);
+
+      // Handle specific error cases
+      if (apiError.code === 'USER_NOT_FOUND') {
+        toast.error('Account not found. Please register first.');
+        setTimeout(() => router.push('/auth/register'), 1500);
+      } else if (apiError.code === 'INVALID_SIGNATURE') {
+        toast.error('Signature verification failed. Please try again.');
+      } else if (apiError.code === 'NETWORK_ERROR') {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(apiError.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -342,25 +218,34 @@ export default function LoginPage() {
         {/* Help Text */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
+            Don&apos;t have an account?{' '}
+            <button
+              onClick={() => router.push('/auth/register')}
+              className="font-medium text-green-600 hover:text-green-700 underline"
+            >
+              Register Now
+            </button>
+          </p>
+          <p className="text-sm text-gray-600 mt-2">
             Don&apos;t have a wallet?{' '}
             <a
               href="https://metamask.io/download/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-green-600 hover:text-green-700"
+              className="font-medium text-green-600 hover:text-green-700 underline"
             >
               Install MetaMask
             </a>
           </p>
         </div>
 
-        {/* Dev Mode Indicator */}
+        {/* Security Info */}
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-xs text-blue-800 text-center font-medium">
-            � Secure Blockchain Authentication
+            🔒 Secure Blockchain Authentication
           </p>
           <p className="text-xs text-blue-600 text-center mt-1">
-            Connect with MetaMask to access your dashboard
+            Your wallet signature proves ownership without revealing your private key
           </p>
         </div>
       </div>
