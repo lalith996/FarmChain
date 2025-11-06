@@ -16,44 +16,59 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
 import { adminAPI } from '@/lib/api';
+import { QuickAnalytics } from '@/components/shared/QuickAnalytics';
+import { BlockchainStatus } from '@/components/shared/BlockchainStatus';
 import toast from 'react-hot-toast';
 
 interface AdminStats {
   users: {
-    total: number;
-    farmers: number;
-    consumers: number;
-    verified: number;
-    pendingKYC: number;
+    total: Array<{ count: number }>;
+    active: Array<{ count: number }>;
+    verified: Array<{ count: number }>;
+    byRole: Array<{ _id: string; count: number }>;
   };
   products: {
-    total: number;
-    active: number;
-    pending: number;
-    rejected: number;
+    total: Array<{ count: number }>;
+    active: Array<{ count: number }>;
+    byCategory: Array<{ _id: string; count: number }>;
+    byStatus: Array<{ _id: string; count: number }>;
   };
   orders: {
-    total: number;
-    pending: number;
-    confirmed: number;
-    shipped: number;
-    delivered: number;
-    cancelled: number;
+    total: Array<{ count: number }>;
+    byStatus: Array<{ _id: string; count: number }>;
+    byPaymentStatus: Array<{ _id: string; count: number }>;
+    disputed: Array<{ count: number }>;
   };
   revenue: {
-    total: number;
-    thisMonth: number;
-    lastMonth: number;
-    growth: number;
+    totalRevenue: number;
+    averageOrderValue: number;
+    count: number;
   };
 }
 
 interface RecentActivity {
-  id: string;
-  type: 'user' | 'product' | 'order' | 'kyc';
-  message: string;
+  _id: string;
+  type: 'user_registered' | 'product_added' | 'order_placed' | 'kyc_pending';
+  description: string;
   timestamp: string;
-  status?: string;
+  user?: {
+    name: string;
+    walletAddress: string;
+    role: string;
+  };
+  product?: {
+    id: string;
+    name: string;
+    farmer: string;
+  };
+  order?: {
+    id: string;
+    status: string;
+    amount: number;
+    buyer: string;
+    seller: string;
+    product: string;
+  };
 }
 
 export default function AdminDashboardPage() {
@@ -81,13 +96,28 @@ export default function AdminDashboardPage() {
   const fetchAdminData = async () => {
     try {
       setLoading(true);
+      
+      // Real API calls - always fetch from database
       const [statsResponse, activityResponse] = await Promise.all([
         adminAPI.getStats(),
-        adminAPI.getRecentActivity({ limit: 10 }),
+        adminAPI.getRecentActivity({ limit: 20 }),
       ]);
 
-      setStats(statsResponse.data);
-      setRecentActivity(activityResponse.data);
+      console.log('📊 Stats from database:', statsResponse.data);
+      console.log('📋 Activities from database:', activityResponse.data);
+
+      // Handle stats response
+      if (statsResponse.data) {
+        setStats(statsResponse.data.data || statsResponse.data);
+      }
+
+      // Handle activity response with proper null checks
+      if (activityResponse.data) {
+        const activities = activityResponse.data.data?.activities || 
+                          activityResponse.data.activities || 
+                          [];
+        setRecentActivity(activities);
+      }
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
       toast.error('Failed to load admin dashboard');
@@ -98,17 +128,66 @@ export default function AdminDashboardPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'user':
+      case 'user_registered':
         return <UsersIcon className="w-5 h-5 text-blue-600" />;
-      case 'product':
+      case 'product_added':
         return <ShoppingBagIcon className="w-5 h-5 text-green-600" />;
-      case 'order':
+      case 'order_placed':
         return <TruckIcon className="w-5 h-5 text-purple-600" />;
-      case 'kyc':
+      case 'kyc_pending':
         return <ShieldCheckIcon className="w-5 h-5 text-yellow-600" />;
       default:
         return <ChartBarIcon className="w-5 h-5 text-gray-600" />;
     }
+  };
+
+  // Helper functions to extract counts from stats with safe null checks
+  const getUserCount = (key: 'total' | 'active' | 'verified') => {
+    if (!stats?.users) return 0;
+    const data = stats.users[key];
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0]?.count || 0;
+    }
+    return 0;
+  };
+
+  const getUsersByRole = (role: string) => {
+    if (!stats?.users?.byRole || !Array.isArray(stats.users.byRole)) return 0;
+    return stats.users.byRole.find((r: any) => r._id === role)?.count || 0;
+  };
+
+  const getProductCount = (key: 'total' | 'active') => {
+    if (!stats?.products) return 0;
+    const data = stats.products[key];
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0]?.count || 0;
+    }
+    return 0;
+  };
+
+  const getProductsByStatus = (status: string) => {
+    if (!stats?.products?.byStatus || !Array.isArray(stats.products.byStatus)) return 0;
+    return stats.products.byStatus.find((s: any) => s._id === status)?.count || 0;
+  };
+
+  const getOrderCount = () => {
+    if (!stats?.orders?.total) return 0;
+    const data = stats.orders.total;
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0]?.count || 0;
+    }
+    return 0;
+  };
+
+  const getOrdersByStatus = (status: string) => {
+    if (!stats?.orders?.byStatus || !Array.isArray(stats.orders.byStatus)) return 0;
+    return stats.orders.byStatus.find((s: any) => s._id === status)?.count || 0;
+  };
+
+  const getPendingKYC = () => {
+    const total = getUserCount('total');
+    const verified = getUserCount('verified');
+    return Math.max(0, total - verified);
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -150,6 +229,11 @@ export default function AdminDashboardPage() {
           <p className="text-gray-600 mt-2">System overview and management</p>
         </div>
 
+        {/* Quick Analytics */}
+        <div className="mb-8">
+          <QuickAnalytics role="admin" />
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Users */}
@@ -159,14 +243,14 @@ export default function AdminDashboardPage() {
                 <UsersIcon className="w-6 h-6 text-blue-600" />
               </div>
               <span className="text-sm text-green-600 font-medium">
-                +{stats.users.pendingKYC} pending
+                +{getPendingKYC()} pending
               </span>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.users.total}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">{getUserCount('total')}</h3>
             <p className="text-sm text-gray-600 mt-1">Total Users</p>
             <div className="mt-4 flex items-center space-x-4 text-xs text-gray-600">
-              <span>{stats.users.farmers} Farmers</span>
-              <span>{stats.users.consumers} Consumers</span>
+              <span>{getUsersByRole('farmer')} Farmers</span>
+              <span>{getUsersByRole('consumer')} Consumers</span>
             </div>
           </div>
 
@@ -177,14 +261,14 @@ export default function AdminDashboardPage() {
                 <ShoppingBagIcon className="w-6 h-6 text-green-600" />
               </div>
               <span className="text-sm text-yellow-600 font-medium">
-                {stats.products.pending} pending
+                {getProductsByStatus('pending')} pending
               </span>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.products.total}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">{getProductCount('total')}</h3>
             <p className="text-sm text-gray-600 mt-1">Total Products</p>
             <div className="mt-4 flex items-center space-x-4 text-xs text-gray-600">
-              <span>{stats.products.active} Active</span>
-              <span>{stats.products.rejected} Rejected</span>
+              <span>{getProductCount('active')} Active</span>
+              <span>{getProductsByStatus('rejected')} Rejected</span>
             </div>
           </div>
 
@@ -195,14 +279,14 @@ export default function AdminDashboardPage() {
                 <TruckIcon className="w-6 h-6 text-purple-600" />
               </div>
               <span className="text-sm text-blue-600 font-medium">
-                {stats.orders.pending} pending
+                {getOrdersByStatus('pending')} pending
               </span>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900">{stats.orders.total}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">{getOrderCount()}</h3>
             <p className="text-sm text-gray-600 mt-1">Total Orders</p>
             <div className="mt-4 flex items-center space-x-4 text-xs text-gray-600">
-              <span>{stats.orders.delivered} Delivered</span>
-              <span>{stats.orders.cancelled} Cancelled</span>
+              <span>{getOrdersByStatus('delivered')} Delivered</span>
+              <span>{getOrdersByStatus('cancelled')} Cancelled</span>
             </div>
           </div>
 
@@ -213,15 +297,15 @@ export default function AdminDashboardPage() {
                 <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
               </div>
               <span className="text-sm text-green-600 font-medium">
-                +{stats.revenue.growth}%
+                {stats?.revenue?.count || 0} orders
               </span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">
-              ₹{(stats.revenue.total / 1000).toFixed(1)}K
+              ₹{((stats?.revenue?.totalRevenue || 0) / 1000).toFixed(1)}K
             </h3>
             <p className="text-sm text-gray-600 mt-1">Total Revenue</p>
             <div className="mt-4 flex items-center space-x-4 text-xs text-gray-600">
-              <span>This Month: ₹{(stats.revenue.thisMonth / 1000).toFixed(1)}K</span>
+              <span>Avg: ₹{(stats?.revenue?.averageOrderValue || 0).toFixed(0)}</span>
             </div>
           </div>
         </div>
@@ -236,7 +320,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
                   <ClockIcon className="w-8 h-8 text-yellow-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.orders.pending}</p>
+                    <p className="text-2xl font-bold text-gray-900">{getOrdersByStatus('pending')}</p>
                     <p className="text-sm text-gray-600">Pending</p>
                   </div>
                 </div>
@@ -244,7 +328,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg">
                   <CheckCircleIcon className="w-8 h-8 text-blue-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.orders.confirmed}</p>
+                    <p className="text-2xl font-bold text-gray-900">{getOrdersByStatus('confirmed')}</p>
                     <p className="text-sm text-gray-600">Confirmed</p>
                   </div>
                 </div>
@@ -252,7 +336,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg">
                   <TruckIcon className="w-8 h-8 text-purple-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.orders.shipped}</p>
+                    <p className="text-2xl font-bold text-gray-900">{getOrdersByStatus('shipped')}</p>
                     <p className="text-sm text-gray-600">Shipped</p>
                   </div>
                 </div>
@@ -260,7 +344,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg">
                   <CheckCircleIcon className="w-8 h-8 text-green-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.orders.delivered}</p>
+                    <p className="text-2xl font-bold text-gray-900">{getOrdersByStatus('delivered')}</p>
                     <p className="text-sm text-gray-600">Delivered</p>
                   </div>
                 </div>
@@ -268,7 +352,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg">
                   <XCircleIcon className="w-8 h-8 text-red-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.orders.cancelled}</p>
+                    <p className="text-2xl font-bold text-gray-900">{getOrdersByStatus('cancelled')}</p>
                     <p className="text-sm text-gray-600">Cancelled</p>
                   </div>
                 </div>
@@ -287,14 +371,29 @@ export default function AdminDashboardPage() {
                 {recentActivity.length > 0 ? (
                   recentActivity.map((activity) => (
                     <div
-                      key={activity.id}
+                      key={activity._id}
                       className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
                     >
                       <div className="mt-0.5">{getActivityIcon(activity.type)}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">{activity.message}</p>
+                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        {activity.user && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {activity.user.name} ({activity.user.role})
+                          </p>
+                        )}
+                        {activity.order && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Order #{activity.order.id} - ₹{activity.order.amount}
+                          </p>
+                        )}
+                        {activity.product && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {activity.product.name} by {activity.product.farmer}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500 mt-1">
-                          {formatTimeAgo(activity.timestamp)}
+                          ID: {activity._id.slice(-8)} • {formatTimeAgo(activity.timestamp)}
                         </p>
                       </div>
                     </div>
@@ -320,9 +419,9 @@ export default function AdminDashboardPage() {
                     <UsersIcon className="w-5 h-5 text-gray-600" />
                     <span className="text-sm font-medium text-gray-900">Manage Users</span>
                   </div>
-                  {stats.users.pendingKYC > 0 && (
+                  {getPendingKYC() > 0 && (
                     <span className="bg-red-100 text-red-600 text-xs font-medium px-2 py-1 rounded-full">
-                      {stats.users.pendingKYC}
+                      {getPendingKYC()}
                     </span>
                   )}
                 </Link>
@@ -335,9 +434,9 @@ export default function AdminDashboardPage() {
                     <ShoppingBagIcon className="w-5 h-5 text-gray-600" />
                     <span className="text-sm font-medium text-gray-900">Manage Products</span>
                   </div>
-                  {stats.products.pending > 0 && (
+                  {getProductsByStatus('pending') > 0 && (
                     <span className="bg-yellow-100 text-yellow-600 text-xs font-medium px-2 py-1 rounded-full">
-                      {stats.products.pending}
+                      {getProductsByStatus('pending')}
                     </span>
                   )}
                 </Link>
@@ -350,9 +449,9 @@ export default function AdminDashboardPage() {
                     <TruckIcon className="w-5 h-5 text-gray-600" />
                     <span className="text-sm font-medium text-gray-900">Manage Orders</span>
                   </div>
-                  {stats.orders.pending > 0 && (
+                  {getOrdersByStatus('pending') > 0 && (
                     <span className="bg-blue-100 text-blue-600 text-xs font-medium px-2 py-1 rounded-full">
-                      {stats.orders.pending}
+                      {getOrdersByStatus('pending')}
                     </span>
                   )}
                 </Link>
@@ -367,45 +466,16 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* System Status */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">System Status</h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">API Status</span>
-                  <span className="flex items-center text-sm text-green-600">
-                    <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
-                    Online
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Database</span>
-                  <span className="flex items-center text-sm text-green-600">
-                    <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
-                    Connected
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Blockchain</span>
-                  <span className="flex items-center text-sm text-green-600">
-                    <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
-                    Synced
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Storage</span>
-                  <span className="text-sm text-gray-900">78% Used</span>
-                </div>
-              </div>
-            </div>
+            {/* Blockchain Status */}
+            <BlockchainStatus compact={false} />
 
             {/* Pending Actions */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
               <h3 className="font-bold text-yellow-900 mb-3">Pending Actions</h3>
               <ul className="space-y-2 text-sm text-yellow-800">
-                <li>• {stats.users.pendingKYC} KYC verifications pending</li>
-                <li>• {stats.products.pending} products awaiting approval</li>
-                <li>• {stats.orders.pending} orders need processing</li>
+                <li>• {getPendingKYC()} KYC verifications pending</li>
+                <li>• {getProductsByStatus('pending')} products awaiting approval</li>
+                <li>• {getOrdersByStatus('pending')} orders need processing</li>
               </ul>
             </div>
           </div>

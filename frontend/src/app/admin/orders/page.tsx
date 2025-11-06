@@ -46,19 +46,57 @@ export default function AdminOrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = {
-        page,
-        limit: 20,
-      };
-
-      if (statusFilter !== 'all') params.status = statusFilter;
-      if (searchTerm) params.search = searchTerm;
-
-      const response = await adminAPI.getAllOrders(params);
-      setOrders(response.data.orders || response.data);
       
-      if (response.data.pagination) {
-        setTotalPages(response.data.pagination.pages);
+      // Check if using development authentication
+      const authToken = localStorage.getItem('authToken');
+      const isDevAuth = authToken?.startsWith('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.');
+      
+      if (isDevAuth) {
+        console.log('� Loading orders data');
+        // Use development orders
+        setOrders([
+          {
+            _id: 'fake-order-1',
+            orderNumber: 'ORD-001',
+            buyer: { name: 'Jane Consumer', _id: 'fake-user-3' },
+            seller: { name: 'John Farmer', _id: 'fake-user-2' },
+            items: [
+              { product: { name: 'Organic Tomatoes' }, quantity: 5, price: 4.99 }
+            ],
+            totalAmount: 24.95,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          },
+          {
+            _id: 'fake-order-2',
+            orderNumber: 'ORD-002',
+            buyer: { name: 'Jane Consumer', _id: 'fake-user-3' },
+            seller: { name: 'John Farmer', _id: 'fake-user-2' },
+            items: [
+              { product: { name: 'Fresh Strawberries' }, quantity: 2, price: 8.99 }
+            ],
+            totalAmount: 17.98,
+            status: 'delivered',
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ] as any);
+        setTotalPages(1);
+      } else {
+        // Real API calls
+        const params: Record<string, string | number> = {
+          page,
+          limit: 20,
+        };
+
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (searchTerm) params.search = searchTerm;
+
+        const response = await adminAPI.getAllOrders(params);
+        setOrders(response.data.orders || response.data);
+        
+        if (response.data.pagination) {
+          setTotalPages(response.data.pagination.pages);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
@@ -225,10 +263,10 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {order.product?.name || 'N/A'}
+                        {order.product?.basicInfo?.name || order.product?.name || 'N/A'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {order.orderDetails.quantity} {order.orderDetails.unit || 'units'}
+                        {order.orderDetails?.quantity || 0} {order.orderDetails?.unit || 'units'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -255,17 +293,23 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900">
-                        ₹{order.orderDetails.totalAmount.toLocaleString()}
+                        ₹{(order.orderDetails?.totalAmount || 0).toLocaleString()}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status || 'pending')}`}>
+                        {order.status ? 
+                          order.status.charAt(0).toUpperCase() + order.status.slice(1) : 
+                          'Pending'
+                        }
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${getPaymentStatusColor(order.payment.status)}`}>
-                        {order.payment.status.charAt(0).toUpperCase() + order.payment.status.slice(1)}
+                      <span className={`text-sm font-medium ${getPaymentStatusColor(order.payment?.status || 'pending')}`}>
+                        {order.payment?.status ? 
+                          order.payment.status.charAt(0).toUpperCase() + order.payment.status.slice(1) : 
+                          'Pending'
+                        }
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

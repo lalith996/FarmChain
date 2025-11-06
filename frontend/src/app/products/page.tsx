@@ -32,13 +32,196 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = { page, limit: 12 };
-      if (category && category !== 'All') params.category = category;
-      if (searchQuery) params.q = searchQuery;
+      
+      // Check if using fake authentication
+      const authToken = localStorage.getItem('authToken');
+      const isFakeAuth = authToken?.startsWith('fake-jwt-token-');
+      
+      if (isFakeAuth) {
+        console.log('🔧 Using fake products data for dev mode');
+        
+        // Generate comprehensive fake products
+        const fakeProducts = [
+          {
+            _id: 'prod-1',
+            name: 'Organic Tomatoes',
+            description: 'Fresh organic tomatoes from local farm',
+            category: 'vegetables',
+            price: 4.99,
+            unit: 'kg',
+            quantity: 500,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/tomato.jpg'],
+            status: 'active',
+            rating: { average: 4.8, count: 45 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-2',
+            name: 'Fresh Strawberries',
+            description: 'Sweet and juicy strawberries',
+            category: 'fruits',
+            price: 8.99,
+            unit: 'kg',
+            quantity: 200,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/strawberry.jpg'],
+            status: 'active',
+            rating: { average: 4.9, count: 67 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-3',
+            name: 'Organic Wheat',
+            description: 'Premium quality organic wheat',
+            category: 'grains',
+            price: 2.99,
+            unit: 'kg',
+            quantity: 1000,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/wheat.jpg'],
+            status: 'active',
+            rating: { average: 4.7, count: 89 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-4',
+            name: 'Fresh Milk',
+            description: 'Pure farm-fresh milk',
+            category: 'dairy',
+            price: 1.99,
+            unit: 'liter',
+            quantity: 300,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/milk.jpg'],
+            status: 'active',
+            rating: { average: 5.0, count: 120 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-5',
+            name: 'Green Peas',
+            description: 'Fresh green peas',
+            category: 'vegetables',
+            price: 3.49,
+            unit: 'kg',
+            quantity: 250,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/peas.jpg'],
+            status: 'active',
+            rating: { average: 4.6, count: 34 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-6',
+            name: 'Red Apples',
+            description: 'Crispy red apples',
+            category: 'fruits',
+            price: 6.99,
+            unit: 'kg',
+            quantity: 400,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/apple.jpg'],
+            status: 'active',
+            rating: { average: 4.8, count: 78 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-7',
+            name: 'Turmeric Powder',
+            description: 'Pure turmeric powder',
+            category: 'spices',
+            price: 9.99,
+            unit: 'kg',
+            quantity: 150,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/turmeric.jpg'],
+            status: 'active',
+            rating: { average: 4.9, count: 56 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'prod-8',
+            name: 'Black Lentils',
+            description: 'Premium black lentils',
+            category: 'pulses',
+            price: 5.49,
+            unit: 'kg',
+            quantity: 600,
+            farmer: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            images: ['/images/products/lentils.jpg'],
+            status: 'active',
+            rating: { average: 4.7, count: 92 },
+            location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+            createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+        
+        // Filter by category if selected
+        let filteredProducts = fakeProducts;
+        if (category && category !== 'All') {
+          filteredProducts = fakeProducts.filter(p => p.category === category);
+        }
+        
+        // Filter by search query if provided
+        if (searchQuery) {
+          filteredProducts = filteredProducts.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.description.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+        
+        setProducts(filteredProducts as any);
+        setTotalPages(1);
+      } else {
+        // Real API call
+        const params: Record<string, string | number> = { page, limit: 12 };
+        if (category && category !== 'All') params.category = category;
+        if (searchQuery) params.q = searchQuery;
 
-      const response = await productAPI.getAll(params);
-      setProducts(response.data.data.products);
-      setTotalPages(response.data.data.pagination.pages);
+        const response = await productAPI.getAll(params);
+        setProducts(response.data.data.products);
+        setTotalPages(response.data.data.pagination.pages);
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to load products');

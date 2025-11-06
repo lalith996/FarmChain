@@ -10,133 +10,254 @@ const logger = require('../utils/logger');
  * @access  Private (Admin)
  */
 exports.getAnalytics = asyncHandler(async (req, res, next) => {
-  const { period = '30' } = req.query; // days
-  const daysAgo = new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000);
+  const { days = '30' } = req.query;
+  const period = parseInt(days);
+  const daysAgo = new Date(Date.now() - period * 24 * 60 * 60 * 1000);
+  
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
   // User analytics
   const [
     totalUsers,
-    newUsers,
-    usersByRole,
-    verifiedUsers
+    thisMonthUsers,
+    lastMonthUsers,
+    usersByRole
   ] = await Promise.all([
     User.countDocuments({ isActive: true }),
-    User.countDocuments({ createdAt: { $gte: daysAgo } }),
+    User.countDocuments({ createdAt: { $gte: thisMonthStart } }),
+    User.countDocuments({ 
+      createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } 
+    }),
     User.aggregate([
       { $match: { isActive: true } },
       { $group: { _id: '$role', count: { $sum: 1 } } }
-    ]),
-    User.countDocuments({ 'verification.isVerified': true })
-  ]);
-
-  // Product analytics
-  const [
-    totalProducts,
-    newProducts,
-    productsByCategory,
-    activeProducts
-  ] = await Promise.all([
-    Product.countDocuments(),
-    Product.countDocuments({ createdAt: { $gte: daysAgo } }),
-    Product.aggregate([
-      { $match: { isActive: true } },
-      { $group: { _id: '$basicInfo.category', count: { $sum: 1 } } }
-    ]),
-    Product.countDocuments({ isActive: true })
+    ])
   ]);
 
   // Order analytics
   const [
     totalOrders,
-    newOrders,
-    ordersByStatus,
-    completedOrders,
-    totalRevenue
+    thisMonthOrders,
+    lastMonthOrders,
+    ordersByStatus
   ] = await Promise.all([
     Order.countDocuments(),
-    Order.countDocuments({ createdAt: { $gte: daysAgo } }),
+    Order.countDocuments({ createdAt: { $gte: thisMonthStart } }),
+    Order.countDocuments({ 
+      createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } 
+    }),
     Order.aggregate([
       { $group: { _id: '$status', count: { $sum: 1 } } }
-    ]),
-    Order.countDocuments({ status: 'delivered' }),
+    ])
+  ]);
+
+  // Revenue analytics
+  const [
+    totalRevenueData,
+    thisMonthRevenueData,
+    lastMonthRevenueData
+  ] = await Promise.all([
     Order.aggregate([
       { $match: { 'payment.status': 'completed' } },
+      { $group: { _id: null, total: { $sum: '$orderDetails.totalAmount' } } }
+    ]),
+    Order.aggregate([
+      { 
+        $match: { 
+          'payment.status': 'completed',
+          createdAt: { $gte: thisMonthStart }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$orderDetails.totalAmount' } } }
+    ]),
+    Order.aggregate([
+      { 
+        $match: { 
+          'payment.status': 'completed',
+          createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd }
+        } 
+      },
       { $group: { _id: null, total: { $sum: '$orderDetails.totalAmount' } } }
     ])
   ]);
 
-  // Payment analytics
-  const [
-    totalPayments,
-    successfulPayments,
-    failedPayments,
-    disputedOrders
-  ] = await Promise.all([
-    Order.countDocuments({ 'payment.paymentId': { $exists: true } }),
-    Order.countDocuments({ 'payment.status': 'completed' }),
-    Order.countDocuments({ 'payment.status': 'failed' }),
-    Order.countDocuments({ 'dispute.isDisputed': true, 'dispute.status': 'open' })
-  ]);
+  const totalRevenue = totalRevenueData[0]?.total || 0;
+  const thisMonthRevenue = thisMonthRevenueData[0]?.total || 0;
+  const lastMonthRevenue = lastMonthRevenueData[0]?.total || 0;
 
-  // Growth trends (daily for the period)
-  const userGrowth = await User.aggregate([
-    { $match: { createdAt: { $gte: daysAgo } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-        count: { $sum: 1 }
-      }
+  // Calculate growth percentages
+  const userGrowth = lastMonthUsers > 0 
+    ? ((thisMonthUsers - lastMonthUsers) / lastMonthUsers) * 100 
+    : 0;
+  const orderGrowth = lastMonthOrders > 0 
+    ? ((thisMonthOrders - lastMonthOrders) / lastMonthOrders) * 100 
+    : 0;
+  const revenueGrowth = lastMonthRevenue > 0 
+    ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+    : 0;
+
+  // Monthly trends (last 12 months)
+  const revenueByMonth = await Order.aggregate([
+    { 
+      $match: { 
+        'payment.status': 'completed',
+        createdAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) }
+      } 
     },
-    { $sort: { _id: 1 } }
-  ]);
-
-  const orderGrowth = await Order.aggregate([
-    { $match: { createdAt: { $gte: daysAgo } } },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-        count: { $sum: 1 },
+        _id: { 
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' }
+        },
         revenue: { $sum: '$orderDetails.totalAmount' }
       }
     },
-    { $sort: { _id: 1 } }
+    { $sort: { '_id.year': 1, '_id.month': 1 } }
   ]);
+
+  const usersByMonth = await User.aggregate([
+    {
+      $group: {
+        _id: { 
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' }
+        },
+        users: { $sum: 1 }
+      }
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } }
+  ]);
+
+  // Format monthly data
+  const formattedRevenueByMonth = [];
+  const formattedUsersByMonth = [];
+  
+  for (let i = 11; i >= 0; i--) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth() + 1;
+    
+    const revenueData = revenueByMonth.find(r => r._id.year === year && r._id.month === month);
+    formattedRevenueByMonth.push({
+      month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      revenue: revenueData?.revenue || 0
+    });
+
+    // Cumulative user count up to this month
+    const usersUpToMonth = await User.countDocuments({
+      createdAt: { $lte: new Date(year, month, 0) }
+    });
+    formattedUsersByMonth.push({
+      month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      users: usersUpToMonth
+    });
+  }
+
+  // Convert usersByRole array to object
+  const byRoleObject = {};
+  usersByRole.forEach(item => {
+    byRoleObject[item._id] = item.count;
+  });
+
+  // Convert ordersByStatus array to object
+  const byStatusObject = {};
+  ordersByStatus.forEach(item => {
+    byStatusObject[item._id] = item.count;
+  });
+
+  // Top products
+  const topProducts = await Order.aggregate([
+    { $match: { 'payment.status': 'completed' } },
+    {
+      $group: {
+        _id: '$product',
+        totalSold: { $sum: '$orderDetails.quantity' },
+        revenue: { $sum: '$orderDetails.totalAmount' }
+      }
+    },
+    { $sort: { revenue: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'productInfo'
+      }
+    },
+    { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } }
+  ]);
+
+  const formattedTopProducts = topProducts.map(p => ({
+    _id: p._id,
+    name: p.productInfo?.basicInfo?.name || 'Unknown Product',
+    category: p.productInfo?.basicInfo?.category || 'Unknown',
+    totalSold: p.totalSold,
+    revenue: p.revenue
+  }));
+
+  // Top farmers
+  const topFarmers = await Order.aggregate([
+    { $match: { 'payment.status': 'completed' } },
+    {
+      $group: {
+        _id: '$seller',
+        totalOrders: { $sum: 1 },
+        revenue: { $sum: '$orderDetails.totalAmount' }
+      }
+    },
+    { $sort: { revenue: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'farmerInfo'
+      }
+    },
+    { $unwind: { path: '$farmerInfo', preserveNullAndEmptyArrays: true } }
+  ]);
+
+  const formattedTopFarmers = topFarmers.map(f => ({
+    _id: f._id,
+    name: f.farmerInfo?.profile?.name || 'Unknown Farmer',
+    totalOrders: f.totalOrders,
+    revenue: f.revenue,
+    rating: f.farmerInfo?.stats?.averageRating || 4.5
+  }));
 
   res.status(200).json({
     success: true,
     data: {
+      revenue: {
+        total: totalRevenue,
+        thisMonth: thisMonthRevenue,
+        lastMonth: lastMonthRevenue,
+        growth: revenueGrowth,
+        byMonth: formattedRevenueByMonth
+      },
       users: {
         total: totalUsers,
-        new: newUsers,
-        byRole: usersByRole,
-        verified: verifiedUsers
-      },
-      products: {
-        total: totalProducts,
-        new: newProducts,
-        byCategory: productsByCategory,
-        active: activeProducts
+        thisMonth: thisMonthUsers,
+        lastMonth: lastMonthUsers,
+        growth: userGrowth,
+        byMonth: formattedUsersByMonth,
+        byRole: byRoleObject
       },
       orders: {
         total: totalOrders,
-        new: newOrders,
-        byStatus: ordersByStatus,
-        completed: completedOrders
+        thisMonth: thisMonthOrders,
+        lastMonth: lastMonthOrders,
+        growth: orderGrowth,
+        byStatus: byStatusObject
       },
-      payments: {
-        total: totalPayments,
-        successful: successfulPayments,
-        failed: failedPayments,
-        disputed: disputedOrders
-      },
-      revenue: {
-        total: totalRevenue[0]?.total || 0,
-        period: `${period} days`
-      },
-      growth: {
-        users: userGrowth,
-        orders: orderGrowth
-      }
+      topProducts: formattedTopProducts,
+      topFarmers: formattedTopFarmers
     }
   });
 });
@@ -163,6 +284,16 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
 
   if (req.query.kycStatus) {
     filter['verification.kycStatus'] = req.query.kycStatus;
+  }
+
+  // Add search functionality
+  if (req.query.search) {
+    const searchRegex = new RegExp(req.query.search, 'i');
+    filter.$or = [
+      { 'profile.name': searchRegex },
+      { 'profile.email': searchRegex },
+      { walletAddress: searchRegex }
+    ];
   }
 
   const [users, total] = await Promise.all([
@@ -573,35 +704,108 @@ exports.getSystemHealth = asyncHandler(async (req, res, next) => {
  * @access  Private (Admin)
  */
 exports.getActivityLogs = asyncHandler(async (req, res, next) => {
-  const limit = parseInt(req.query.limit) || 50;
+  const limit = parseInt(req.query.limit) || 20;
 
-  const [recentUsers, recentProducts, recentOrders] = await Promise.all([
+  const [recentUsers, recentProducts, recentOrders, pendingKYC] = await Promise.all([
     User.find()
-      .select('profile.name walletAddress role createdAt')
+      .select('_id profile.name walletAddress role createdAt')
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(limit)
       .lean(),
     Product.find()
       .populate('farmer', 'profile.name walletAddress')
-      .select('productId basicInfo.name createdAt')
+      .select('_id productId basicInfo.name createdAt isActive')
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(limit)
       .lean(),
     Order.find()
       .populate('buyer', 'profile.name walletAddress')
       .populate('seller', 'profile.name walletAddress')
-      .select('orderId status orderDetails.totalAmount createdAt')
+      .populate('product', 'basicInfo.name productId')
+      .select('_id orderId status orderDetails.totalAmount createdAt')
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(limit)
+      .lean(),
+    User.find({ 'verification.kycStatus': 'pending' })
+      .select('_id profile.name walletAddress role createdAt')
+      .sort({ createdAt: -1 })
+      .limit(limit)
       .lean()
   ]);
+
+  // Format activities with proper timestamps and types
+  const activities = [];
+
+  recentUsers.forEach(user => {
+    activities.push({
+      _id: user._id,
+      type: 'user_registered',
+      description: `New user registered: ${user.profile?.name || 'Anonymous'}`,
+      user: {
+        name: user.profile?.name || 'Anonymous',
+        walletAddress: user.walletAddress,
+        role: user.role
+      },
+      timestamp: user.createdAt
+    });
+  });
+
+  recentProducts.forEach(product => {
+    activities.push({
+      _id: product._id,
+      type: 'product_added',
+      description: `New product added: ${product.basicInfo?.name || 'Unknown'}`,
+      product: {
+        id: product.productId,
+        name: product.basicInfo?.name || 'Unknown',
+        farmer: product.farmer?.profile?.name || 'Unknown'
+      },
+      timestamp: product.createdAt
+    });
+  });
+
+  recentOrders.forEach(order => {
+    activities.push({
+      _id: order._id,
+      type: 'order_placed',
+      description: `Order placed: ${order.orderId}`,
+      order: {
+        id: order.orderId,
+        status: order.status,
+        amount: order.orderDetails?.totalAmount || 0,
+        buyer: order.buyer?.profile?.name || 'Unknown',
+        seller: order.seller?.profile?.name || 'Unknown',
+        product: order.product?.basicInfo?.name || 'Unknown'
+      },
+      timestamp: order.createdAt
+    });
+  });
+
+  pendingKYC.forEach(user => {
+    activities.push({
+      _id: user._id,
+      type: 'kyc_pending',
+      description: `KYC verification pending: ${user.profile?.name || 'Anonymous'}`,
+      user: {
+        name: user.profile?.name || 'Anonymous',
+        walletAddress: user.walletAddress,
+        role: user.role
+      },
+      timestamp: user.createdAt
+    });
+  });
+
+  // Sort all activities by timestamp
+  activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   res.status(200).json({
     success: true,
     data: {
+      activities: activities.slice(0, limit),
       recentUsers,
       recentProducts,
-      recentOrders
+      recentOrders,
+      pendingKYC
     }
   });
 });

@@ -5,6 +5,7 @@ import { HeartIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 
 interface WishlistButtonProps {
   productId: string;
@@ -21,6 +22,7 @@ export function WishlistButton({
 }: WishlistButtonProps) {
   const [inWishlist, setInWishlist] = useState(initialInWishlist);
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated, token } = useAuthStore();
 
   const sizeClasses = {
     sm: 'h-4 w-4',
@@ -35,8 +37,7 @@ export function WishlistButton({
     try {
       setLoading(true);
       
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!isAuthenticated || !token) {
         toast.error('Please login to add to wishlist');
         return;
       }

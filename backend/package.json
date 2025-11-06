@@ -9,7 +9,10 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.js",
-    "lint:fix": "eslint src/**/*.js --fix"
+    "lint:fix": "eslint src/**/*.js --fix",
+    "seed:products": "node scripts/seedProducts.js",
+    "seed:all": "node scripts/seedAllData.js",
+    "update:images": "node scripts/updateProductImages.js"
   },
   "keywords": [
     "blockchain",

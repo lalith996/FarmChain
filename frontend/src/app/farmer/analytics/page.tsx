@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { orderAPI, productAPI } from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
+import { QuickAnalytics } from '@/components/shared/QuickAnalytics';
+import { BlockchainStatus } from '@/components/shared/BlockchainStatus';
 import toast from 'react-hot-toast';
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
   ShoppingBagIcon,
-  TrendingUpIcon,
-  ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
 
 interface AnalyticsData {
@@ -115,35 +115,49 @@ export default function FarmerAnalyticsPage() {
           </div>
         </div>
 
+        {/* Quick Analytics */}
+        <div className="mb-8">
+          <QuickAnalytics role="farmer" />
+        </div>
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Revenue"
-            value={`₹${analytics?.totalRevenue.toLocaleString()}`}
-            icon={<CurrencyDollarIcon className="h-6 w-6" />}
-            color="green"
-            trend={{ value: '+15%', isPositive: true }}
-          />
-          <StatCard
-            title="Total Orders"
-            value={analytics?.totalOrders || 0}
-            icon={<ShoppingBagIcon className="h-6 w-6" />}
-            color="blue"
-            trend={{ value: '+8%', isPositive: true }}
-          />
-          <StatCard
-            title="Active Products"
-            value={analytics?.totalProducts || 0}
-            icon={<ChartBarIcon className="h-6 w-6" />}
-            color="purple"
-          />
-          <StatCard
-            title="Avg Order Value"
-            value={`₹${analytics?.averageOrderValue.toLocaleString()}`}
-            icon={<TrendingUpIcon className="h-6 w-6" />}
-            color="yellow"
-            trend={{ value: '+12%', isPositive: true }}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <StatCard
+                title="Total Revenue"
+                value={`₹${analytics?.totalRevenue.toLocaleString()}`}
+                icon={<CurrencyDollarIcon className="h-6 w-6" />}
+                color="green"
+                trend={{ value: '+15%', isPositive: true }}
+              />
+              <StatCard
+                title="Total Orders"
+                value={analytics?.totalOrders || 0}
+                icon={<ShoppingBagIcon className="h-6 w-6" />}
+                color="blue"
+                trend={{ value: '+8%', isPositive: true }}
+              />
+              <StatCard
+                title="Active Products"
+                value={analytics?.totalProducts || 0}
+                icon={<ChartBarIcon className="h-6 w-6" />}
+                color="purple"
+              />
+              <StatCard
+                title="Avg Order Value"
+                value={`₹${analytics?.averageOrderValue.toLocaleString()}`}
+                icon={<CurrencyDollarIcon className="h-6 w-6" />}
+                color="yellow"
+                trend={{ value: '+12%', isPositive: true }}
+              />
+            </div>
+          </div>
+          
+          {/* Blockchain Status */}
+          <div>
+            <BlockchainStatus />
+          </div>
         </div>
 
         {/* Revenue Chart */}

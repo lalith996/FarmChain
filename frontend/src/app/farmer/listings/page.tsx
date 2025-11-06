@@ -203,7 +203,7 @@ export default function FarmerListingsPage() {
         badge={{ text: `${products.filter(p => p.isActive).length} Active`, variant: 'success' }}
         action={{
           label: 'Add Product',
-          onClick: () => window.location.href = '/products/register',
+          onClick: () => window.location.href = '/farmer/register-product',
           icon: <PlusIcon className="h-5 w-5" />,
         }}
       />

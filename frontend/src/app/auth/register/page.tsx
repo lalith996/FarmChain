@@ -73,7 +73,7 @@ export default function RegisterPage() {
         walletAddress: address,
         signature,
         message,
-        role: formData.role,
+        role: formData.role.toUpperCase(),
         profile: {
           name: formData.name,
           email: formData.email || undefined,

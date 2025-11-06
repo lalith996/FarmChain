@@ -14,11 +14,14 @@ import {
   ArrowLeftIcon,
   ShoppingCartIcon,
   UserIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { StarIcon as StarIconSolid, HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { productAPI, blockchainAPI } from '@/lib/api';
 import { Product } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { useCartStore } from '@/store/cartStore';
+import { WishlistButton } from '@/components/wishlist/WishlistButton';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -40,6 +43,8 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const { addItem, items } = useCartStore();
+  const isInCart = items.some(item => item.productId === product?._id);
 
   useEffect(() => {
     fetchProductDetails();
@@ -69,6 +74,35 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleAddToCart = () => {
+    if (!product) return;
+
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      router.push('/auth/login');
+      return;
+    }
+
+    if (user?.role === 'farmer') {
+      toast.error('Farmers cannot purchase products');
+      return;
+    }
+
+    addItem({
+      productId: product._id,
+      name: product.name,
+      price: product.currentPrice,
+      quantity,
+      unit: product.unit,
+      image: product.images?.[0],
+      farmerId: product.farmer?._id || '',
+      farmerName: product.farmer?.profile?.name || 'Unknown',
+      maxQuantity: product.quantityAvailable,
+    });
+
+    toast.success(`Added ${quantity} ${product.unit} to cart`);
+  };
+
   const handleBuyNow = () => {
     if (!isAuthenticated) {
       toast.error('Please login to purchase products');
@@ -81,7 +115,11 @@ export default function ProductDetailPage() {
       return;
     }
 
-    setShowOrderModal(true);
+    // Add to cart first
+    handleAddToCart();
+    
+    // Then navigate to checkout
+    router.push('/checkout');
   };
 
   const handleCreateOrder = () => {
@@ -184,9 +222,14 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
+              {/* Wishlist Button */}
+              <div className="absolute top-4 right-4">
+                <WishlistButton productId={product._id} />
+              </div>
+
               {/* Blockchain Badge */}
               {product.registrationTxHash && (
-                <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
+                <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
                   <ShieldCheckIcon className="h-4 w-4" />
                   <span>Blockchain Verified</span>
                 </div>
@@ -194,7 +237,7 @@ export default function ProductDetailPage() {
 
               {/* Quality Grade Badge */}
               {product.qualityGrade && (
-                <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium ${getQualityGradeColor(product.qualityGrade)}`}>
+                <div className={`absolute ${product.registrationTxHash ? 'top-16' : 'top-4'} left-4 px-3 py-1 rounded-full text-sm font-medium ${getQualityGradeColor(product.qualityGrade)}`}>
                   Grade {product.qualityGrade.toUpperCase()}
                 </div>
               )}
@@ -353,13 +396,26 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
 
-                    <button
-                      onClick={handleBuyNow}
-                      className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <ShoppingCartIcon className="h-5 w-5" />
-                      <span>Buy Now</span>
-                    </button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={handleAddToCart}
+                        disabled={isInCart}
+                        className={`py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
+                          isInCart
+                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            : 'bg-white border-2 border-green-600 text-green-600 hover:bg-green-50'
+                        }`}
+                      >
+                        <ShoppingCartIcon className="h-5 w-5" />
+                        <span>{isInCart ? 'In Cart' : 'Add to Cart'}</span>
+                      </button>
+                      <button
+                        onClick={handleBuyNow}
+                        className="bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <span>Buy Now</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 

@@ -192,22 +192,29 @@ const userSchema = new mongoose.Schema({
     },
     location: {
       address: String,
-      coordinates: {
-        type: {
-          type: String,
-          enum: ['Point'],
-          default: 'Point'
-        },
-        coordinates: {
-          type: [Number], // [longitude, latitude]
-          index: '2dsphere'
-        }
-      },
       city: String,
       state: String,
       country: String,
       pincode: String,
-      timezone: String
+      timezone: String,
+      // GeoJSON for geospatial queries (optional)
+      type: {
+        type: String,
+        enum: ['Point']
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        validate: {
+          validator: function(v) {
+            // If coordinates exist, must be valid [lng, lat]
+            if (!v || v.length === 0) return true;
+            return v.length === 2 && 
+                   v[0] >= -180 && v[0] <= 180 && 
+                   v[1] >= -90 && v[1] <= 90;
+          },
+          message: 'Coordinates must be [longitude, latitude] with valid ranges'
+        }
+      }
     }
   },
 
@@ -447,7 +454,7 @@ userSchema.index({ 'verification.isVerified': 1 });
 userSchema.index({ 'verification.kycStatus': 1 });
 userSchema.index({ 'security.lastLogin': -1 });
 userSchema.index({ 'status.isActive': 1, 'status.isSuspended': 1 });
-userSchema.index({ 'profile.location.coordinates': '2dsphere' });
+userSchema.index({ 'profile.location': '2dsphere' });
 userSchema.index({ createdAt: -1 });
 
 // Virtual for full name
@@ -718,6 +725,20 @@ userSchema.pre('save', function(next) {
       this.status.isSuspended = false;
       this.status.suspensionReason = null;
       this.status.suspensionExpiresAt = null;
+    }
+  }
+
+  // Fix GeoJSON structure for location
+  // Only set type if coordinates are provided, otherwise clear both
+  if (this.profile && this.profile.location) {
+    const coords = this.profile.location.coordinates;
+    if (!coords || coords.length !== 2) {
+      // No valid coordinates - clear GeoJSON fields
+      this.profile.location.type = undefined;
+      this.profile.location.coordinates = undefined;
+    } else {
+      // Valid coordinates exist - ensure type is set
+      this.profile.location.type = 'Point';
     }
   }
 

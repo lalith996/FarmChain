@@ -61,6 +61,15 @@ exports.register = asyncHandler(async (req, res, next) => {
 exports.login = asyncHandler(async (req, res, next) => {
   const { walletAddress, signature, message, nonce } = req.body;
 
+  // Debug log to see what we're receiving
+  console.log('🔍 Backend received login data:', {
+    walletAddress: !!walletAddress,
+    signature: !!signature,
+    message: !!message,
+    nonce: !!nonce,
+    bodyKeys: Object.keys(req.body)
+  });
+
   // Validate required fields
   if (!walletAddress || !signature || !message || !nonce) {
     return next(new AppError('Wallet address, signature, message, and nonce are required', 400, 'MISSING_CREDENTIALS'));

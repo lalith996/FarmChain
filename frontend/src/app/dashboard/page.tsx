@@ -31,8 +31,52 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await userAPI.getDashboard();
-      setStats(response.data);
+      
+      // Check if using fake authentication
+      const authToken = localStorage.getItem('authToken');
+      const isFakeAuth = authToken?.startsWith('fake-jwt-token-');
+      
+      if (isFakeAuth) {
+        console.log('🔧 Using fake dashboard data for dev mode - Role:', user?.role);
+        
+        // Generate role-specific fake data
+        const fakeDashboardData = {
+          totalOrders: user?.role === 'farmer' ? 45 : user?.role === 'consumer' ? 28 : 67,
+          pendingOrders: user?.role === 'farmer' ? 8 : user?.role === 'consumer' ? 3 : 12,
+          completedOrders: user?.role === 'farmer' ? 37 : user?.role === 'consumer' ? 25 : 55,
+          activeProducts: user?.role === 'farmer' ? 12 : user?.role === 'distributor' ? 89 : 0,
+          totalRevenue: user?.role === 'farmer' ? 45600 : user?.role === 'distributor' ? 125000 : 0,
+          recentActivity: [
+            {
+              id: '1',
+              type: user?.role === 'farmer' ? 'product' : 'order',
+              message: user?.role === 'farmer' ? 'New product "Organic Tomatoes" listed' : 'New order placed - #ORD-2024-001',
+              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              status: 'success'
+            },
+            {
+              id: '2',
+              type: 'order',
+              message: user?.role === 'farmer' ? 'Order #ORD-2024-002 confirmed' : 'Order #ORD-2024-002 delivered',
+              timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+              status: 'success'
+            },
+            {
+              id: '3',
+              type: user?.role === 'farmer' ? 'product' : 'order',
+              message: user?.role === 'farmer' ? 'Product "Fresh Strawberries" approved' : 'Order #ORD-2024-003 in transit',
+              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              status: 'pending'
+            }
+          ]
+        };
+        
+        setStats(fakeDashboardData as any);
+      } else {
+        // Real API call
+        const response = await userAPI.getDashboard();
+        setStats(response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('Failed to load dashboard');

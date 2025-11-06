@@ -14,12 +14,22 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
-  const image = product.basicInfo?.images?.[0] || product.images?.[0] || '/placeholder-product.jpg';
   const name = product.basicInfo?.name || product.name;
-  const description = product.basicInfo?.description || product.description;
   const category = product.basicInfo?.category || product.category;
-  const currentPrice = product.pricing?.currentPrice || product.currentPrice;
-  const available = product.quantity?.available || product.quantityAvailable;
+  
+  // Get image with fallback
+  let image = product.basicInfo?.images?.[0] || product.images?.[0];
+  if (!image || image === '') {
+    // Create a fallback placeholder based on product name
+    const encodedName = encodeURIComponent(name || 'Product');
+    image = `https://via.placeholder.com/800x600/4CAF50/FFFFFF?text=${encodedName}`;
+  }
+  
+  const description = product.basicInfo?.description || product.description;
+  const rawPrice = product.pricing?.currentPrice || product.currentPrice || 0;
+  const currentPrice = typeof rawPrice === 'number' ? rawPrice.toFixed(2) : parseFloat(rawPrice).toFixed(2);
+  const rawAvailable = product.quantity?.available || product.quantityAvailable || 0;
+  const available = typeof rawAvailable === 'number' ? Math.round(rawAvailable) : Math.round(parseFloat(rawAvailable));
   const unit = product.quantity?.unit || product.unit;
   const grade = product.quality?.grade || product.qualityGrade;
   
@@ -28,11 +38,15 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
       <Link href={`/products/${product.productId || product._id}`}>
         <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer flex">
           <div className="relative w-48 h-48 bg-gray-200 flex-shrink-0">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={image}
               alt={name}
-              fill
-              className="object-cover"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = `https://via.placeholder.com/800x600/4CAF50/FFFFFF?text=${encodeURIComponent(name)}`;
+              }}
             />
             {product.blockchain?.registrationTxHash && (
               <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">
@@ -78,11 +92,15 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
     <Link href={`/products/${product.productId || product._id}`}>
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col">
         <div className="relative h-48 bg-gray-200">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={image}
             alt={name}
-            fill
-            className="object-cover"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://via.placeholder.com/800x600/4CAF50/FFFFFF?text=${encodeURIComponent(name)}`;
+            }}
           />
           {product.blockchain?.registrationTxHash && (
             <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">

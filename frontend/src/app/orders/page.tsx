@@ -28,29 +28,189 @@ export default function OrdersPage() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const params: {
-        page: number;
-        limit: number;
-        status?: string;
-        search?: string;
-      } = {
-        page,
-        limit: 10,
-      };
-
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
-
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
-
-      const response = await orderAPI.getAll(params);
-      setOrders(response.data.data || response.data);
       
-      if (response.data.pagination) {
-        setTotalPages(response.data.pagination.pages);
+      // Check if using fake authentication
+      const authToken = localStorage.getItem('authToken');
+      const isFakeAuth = authToken?.startsWith('fake-jwt-token-');
+      
+      if (isFakeAuth) {
+        console.log('🔧 Using fake orders data for dev mode');
+        
+        // Get current user to determine role
+        const userStr = localStorage.getItem('user');
+        const currentUser = userStr ? JSON.parse(userStr) : null;
+        
+        // Generate role-specific fake orders
+        const fakeOrders = [
+          {
+            _id: 'order-1',
+            orderNumber: 'ORD-2024-001',
+            buyer: {
+              _id: 'fake-consumer-id',
+              name: 'Jane Consumer',
+              walletAddress: '0xf75a95a93af19896379635e2bb2283c32bfbf935'
+            },
+            seller: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            items: [
+              {
+                product: {
+                  _id: 'prod-1',
+                  name: 'Organic Tomatoes',
+                  price: 4.99
+                },
+                quantity: 10,
+                price: 4.99
+              }
+            ],
+            totalAmount: 49.90,
+            status: 'pending',
+            paymentStatus: 'pending',
+            deliveryAddress: '123 Main St, City, State 12345',
+            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'order-2',
+            orderNumber: 'ORD-2024-002',
+            buyer: {
+              _id: 'fake-consumer-id',
+              name: 'Jane Consumer',
+              walletAddress: '0xf75a95a93af19896379635e2bb2283c32bfbf935'
+            },
+            seller: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            items: [
+              {
+                product: {
+                  _id: 'prod-2',
+                  name: 'Fresh Strawberries',
+                  price: 8.99
+                },
+                quantity: 5,
+                price: 8.99
+              }
+            ],
+            totalAmount: 44.95,
+            status: 'confirmed',
+            paymentStatus: 'paid',
+            deliveryAddress: '123 Main St, City, State 12345',
+            createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'order-3',
+            orderNumber: 'ORD-2024-003',
+            buyer: {
+              _id: 'fake-consumer-id',
+              name: 'Jane Consumer',
+              walletAddress: '0xf75a95a93af19896379635e2bb2283c32bfbf935'
+            },
+            seller: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            items: [
+              {
+                product: {
+                  _id: 'prod-4',
+                  name: 'Fresh Milk',
+                  price: 1.99
+                },
+                quantity: 20,
+                price: 1.99
+              }
+            ],
+            totalAmount: 39.80,
+            status: 'delivered',
+            paymentStatus: 'paid',
+            deliveryAddress: '123 Main St, City, State 12345',
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            _id: 'order-4',
+            orderNumber: 'ORD-2024-004',
+            buyer: {
+              _id: 'fake-consumer-id',
+              name: 'Jane Consumer',
+              walletAddress: '0xf75a95a93af19896379635e2bb2283c32bfbf935'
+            },
+            seller: {
+              _id: 'fake-farmer-id',
+              name: 'John Farmer',
+              walletAddress: '0xcbdc7cc11a5b19623c9a515d6a6702f6775075c1'
+            },
+            items: [
+              {
+                product: {
+                  _id: 'prod-6',
+                  name: 'Red Apples',
+                  price: 6.99
+                },
+                quantity: 8,
+                price: 6.99
+              }
+            ],
+            totalAmount: 55.92,
+            status: 'shipped',
+            paymentStatus: 'paid',
+            deliveryAddress: '123 Main St, City, State 12345',
+            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+        
+        // Filter by status if needed
+        let filteredOrders = fakeOrders;
+        if (statusFilter !== 'all') {
+          filteredOrders = fakeOrders.filter(o => o.status === statusFilter);
+        }
+        
+        // Filter by search term if provided
+        if (searchTerm) {
+          filteredOrders = filteredOrders.filter(o =>
+            o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            o.buyer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            o.seller.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        
+        setOrders(filteredOrders as any);
+        setTotalPages(1);
+      } else {
+        // Real API call
+        const params: {
+          page: number;
+          limit: number;
+          status?: string;
+          search?: string;
+        } = {
+          page,
+          limit: 10,
+        };
+
+        if (statusFilter !== 'all') {
+          params.status = statusFilter;
+        }
+
+        if (searchTerm) {
+          params.search = searchTerm;
+        }
+
+        const response = await orderAPI.getAll(params);
+        setOrders(response.data.data || response.data);
+        
+        if (response.data.pagination) {
+          setTotalPages(response.data.pagination.pages);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch orders:', error);

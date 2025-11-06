@@ -134,14 +134,11 @@ export function HeroSection() {
         className="absolute inset-0 w-full h-[120%] -top-[10%]"
         style={{ willChange: 'transform' }}
       >
-        <Image
-          src="/images/Screenshot%202025-11-06%20at%205.31.56%20AM.png"
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/Screenshot 2025-11-06 at 5.31.56 AM.png"
           alt="Rice fields"
-          fill
-          className="object-cover"
-          priority
-          quality={90}
-          unoptimized
+          className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60"></div>

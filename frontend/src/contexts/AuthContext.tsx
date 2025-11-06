@@ -245,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Token refresh error:', error);
       clearAuthState();
-      router.push('/login');
+      router.push('/auth/login');
     }
   }, [refreshToken, router]);
 

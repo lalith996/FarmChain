@@ -104,7 +104,8 @@ export default function OrderDetailPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-800 border-gray-200';
     switch (status.toLowerCase()) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -122,8 +123,9 @@ export default function OrderDetailPage() {
     }
   };
 
-  const getPaymentStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+  const getPaymentStatusColor = (status: string | undefined) => {
+    if (!status) return 'text-gray-600';
+    switch (status.toLowerCase()) {
       case 'completed':
         return 'text-green-600';
       case 'pending':
@@ -160,7 +162,7 @@ export default function OrderDetailPage() {
       {
         status: 'delivered',
         label: 'Delivered',
-        date: order.statusHistory?.find(h => h.status === 'delivered')?.timestamp || order.delivery.actualDate,
+        date: order.statusHistory?.find(h => h.status === 'delivered')?.timestamp || order.delivery?.actualDate,
         completed: order.status === 'delivered',
       },
     ];
@@ -215,11 +217,11 @@ export default function OrderDetailPage() {
                 Order #{order.orderId}
               </h1>
               <p className="text-gray-600">
-                Placed on {format(new Date(order.createdAt), 'MMMM dd, yyyy')}
+                Placed on {order.createdAt ? format(new Date(order.createdAt), 'MMMM dd, yyyy') : 'N/A'}
               </p>
             </div>
             <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border ${getStatusColor(order.status)}`}>
-              {order.status.replace(/_/g, ' ').toUpperCase()}
+              {order.status ? order.status.replace(/_/g, ' ').toUpperCase() : 'PENDING'}
             </span>
           </div>
 
@@ -286,8 +288,8 @@ export default function OrderDetailPage() {
                     Category: {order.productSnapshot?.category}
                   </p>
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    <span>Quantity: {order.orderDetails.quantity} {order.orderDetails.unit}</span>
-                    <span>Price: ₹{order.orderDetails.pricePerUnit}/{order.orderDetails.unit}</span>
+                    <span>Quantity: {order.orderDetails?.quantity || 0} {order.orderDetails?.unit || 'units'}</span>
+                    <span>Price: ₹{order.orderDetails?.pricePerUnit || 0}/{order.orderDetails?.unit || 'unit'}</span>
                   </div>
                 </div>
               </div>
@@ -300,12 +302,12 @@ export default function OrderDetailPage() {
                 <h2 className="text-lg font-bold text-gray-900">Delivery Address</h2>
               </div>
               <div className="text-gray-600 space-y-1">
-                <p>{order.delivery.address.street}</p>
-                <p>{order.delivery.address.city}, {order.delivery.address.state}</p>
-                <p>{order.delivery.address.zipCode}</p>
-                <p>{order.delivery.address.country}</p>
+                <p>{order.delivery?.address?.street || 'N/A'}</p>
+                <p>{order.delivery?.address?.city || 'N/A'}, {order.delivery?.address?.state || 'N/A'}</p>
+                <p>{order.delivery?.address?.zipCode || 'N/A'}</p>
+                <p>{order.delivery?.address?.country || 'N/A'}</p>
               </div>
-              {order.delivery.expectedDate && (
+              {order.delivery?.expectedDate && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-gray-600">
                     Expected Delivery: {' '}

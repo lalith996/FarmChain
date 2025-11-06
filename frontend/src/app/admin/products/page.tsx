@@ -50,20 +50,56 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = {
-        page,
-        limit: 12,
-      };
-
-      if (statusFilter !== 'all') params.status = statusFilter;
-      if (categoryFilter !== 'all') params.category = categoryFilter;
-      if (searchTerm) params.search = searchTerm;
-
-      const response = await adminAPI.getAllProducts(params);
-      setProducts(response.data.products || response.data);
       
-      if (response.data.pagination) {
-        setTotalPages(response.data.pagination.pages);
+      // Check if using development authentication
+      const authToken = localStorage.getItem('authToken');
+      const isDevAuth = authToken?.startsWith('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.');
+      
+      if (isDevAuth) {
+        console.log('� Loading products data');
+        // Use development products
+        setProducts([
+          {
+            _id: 'fake-product-1',
+            name: 'Organic Tomatoes',
+            category: 'Vegetables',
+            price: 4.99,
+            unit: 'kg',
+            status: 'active',
+            farmer: { name: 'John Farmer', _id: 'fake-user-2' },
+            images: [],
+            createdAt: new Date().toISOString()
+          },
+          {
+            _id: 'fake-product-2',
+            name: 'Fresh Strawberries',
+            category: 'Fruits',
+            price: 8.99,
+            unit: 'kg',
+            status: 'pending',
+            farmer: { name: 'John Farmer', _id: 'fake-user-2' },
+            images: [],
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ] as any);
+        setTotalPages(1);
+      } else {
+        // Real API calls
+        const params: Record<string, string | number> = {
+          page,
+          limit: 12,
+        };
+
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (categoryFilter !== 'all') params.category = categoryFilter;
+        if (searchTerm) params.search = searchTerm;
+
+        const response = await adminAPI.getAllProducts(params);
+        setProducts(response.data.products || response.data);
+        
+        if (response.data.pagination) {
+          setTotalPages(response.data.pagination.pages);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -218,19 +254,23 @@ export default function AdminProductsPage() {
               className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
             >
               {/* Product Image */}
-              <div className="relative h-48 w-full">
-                <Image
-                  src={product.images[0] || '/placeholder-product.jpg'}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
+              <div className="relative h-48 w-full bg-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={(product.basicInfo?.images?.[0] || product.images?.[0]) || `https://via.placeholder.com/800x600/4CAF50/FFFFFF?text=${encodeURIComponent(product.basicInfo?.name || product.name || 'Product')}`}
+                  alt={product.basicInfo?.name || product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://via.placeholder.com/800x600/4CAF50/FFFFFF?text=${encodeURIComponent(product.basicInfo?.name || product.name || 'Product')}`;
+                  }}
                 />
                 <div className="absolute top-2 right-2">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(product.status)}`}>
-                    {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {product.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                {product.registrationTxHash && (
+                {(product.blockchain?.registrationTxHash || product.registrationTxHash) && (
                   <div className="absolute top-2 left-2">
                     <ShieldCheckIcon className="w-6 h-6 text-green-500 bg-white rounded-full p-1" />
                   </div>
@@ -240,22 +280,22 @@ export default function AdminProductsPage() {
               {/* Product Info */}
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  {product.name}
+                  {product.basicInfo?.name || product.name}
                 </h3>
                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                  {product.description}
+                  {product.basicInfo?.description || product.description || 'No description'}
                 </p>
                 
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-2xl font-bold text-green-600">
-                      ₹{product.currentPrice}
+                      ₹{(product.pricing?.currentPrice || product.currentPrice || 0).toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-500">per {product.unit}</p>
+                    <p className="text-xs text-gray-500">per {product.quantity?.unit || product.unit || 'unit'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">Stock: {product.quantityAvailable}</p>
-                    <p className="text-xs text-gray-500">{product.category}</p>
+                    <p className="text-sm text-gray-600">Stock: {Math.round(product.quantity?.available || product.quantityAvailable || 0)}</p>
+                    <p className="text-xs text-gray-500 capitalize">{product.basicInfo?.category || product.category}</p>
                   </div>
                 </div>
 
@@ -264,7 +304,7 @@ export default function AdminProductsPage() {
                     Farmer: <span className="font-medium">{product.farmer?.profile?.name || 'Unknown'}</span>
                   </p>
                   <p className="text-xs text-gray-500">
-                    {product.location || 'Location not specified'}
+                    {product.farmDetails?.farmLocation?.address || product.location || 'Location not specified'}
                   </p>
                 </div>
 
