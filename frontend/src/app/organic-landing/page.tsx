@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, useInView, useAnimation } from 'framer-motion';
+import { motion, useInView, useAnimation, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBagIcon,
   HomeModernIcon,
@@ -18,10 +18,21 @@ import {
   LeafIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import { OrganicFarmLoader } from '@/components/shared/OrganicFarmLoader';
 
 export default function OrganicFarmLandingPage() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
+
+  // Handle loading completion
+  const handleLoadingComplete = () => {
+    setIsLoading(false);
+    setTimeout(() => {
+      setShowContent(true);
+    }, 100);
+  };
 
   // Handle navbar scroll effect
   useEffect(() => {
@@ -34,7 +45,24 @@ export default function OrganicFarmLandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <>
+      {/* Full-screen Organic Farm Loader */}
+      {isLoading && (
+        <OrganicFarmLoader
+          onLoadingComplete={handleLoadingComplete}
+          duration={3500}
+        />
+      )}
+
+      {/* Main Landing Page Content */}
+      <AnimatePresence>
+        {showContent && (
+          <motion.div
+            className="min-h-screen bg-white font-sans"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
       {/* Navigation Bar */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -829,5 +857,9 @@ function Footer() {
         </div>
       </div>
     </footer>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
