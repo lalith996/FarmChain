@@ -9,9 +9,14 @@ import { TestimonialsSection } from '@/components/landing-v2/TestimonialsSection
 import { CTASection } from '@/components/landing-v2/CTASection';
 import { FooterSection } from '@/components/landing-v2/FooterSection';
 import { ChatWidget } from '@/components/chatbot/ChatWidget';
-import { useEffect } from 'react';
+import { FarmChainLoader } from '@/components/shared/FarmChainLoader';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
+
   useEffect(() => {
     // Smooth scroll behavior
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -21,17 +26,45 @@ export default function Home() {
     };
   }, []);
 
+  const handleLoadingComplete = () => {
+    setIsLoading(false);
+    // Small delay to ensure smooth transition
+    setTimeout(() => {
+      setShowContent(true);
+    }, 100);
+  };
+
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
-      <AdvancedNavbar />
-      <HeroSection />
-      <StatsSection />
-      <FeaturesSection />
-      <TechnologySection />
-      <TestimonialsSection />
-      <CTASection />
-      <FooterSection />
-      <ChatWidget />
-    </div>
+    <>
+      {/* Full-screen FarmChain Loader */}
+      {isLoading && (
+        <FarmChainLoader
+          onLoadingComplete={handleLoadingComplete}
+          duration={3000} // 3 seconds
+        />
+      )}
+
+      {/* Main Landing Page Content */}
+      <AnimatePresence>
+        {showContent && (
+          <motion.div
+            className="min-h-screen bg-white overflow-x-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <AdvancedNavbar />
+            <HeroSection />
+            <StatsSection />
+            <FeaturesSection />
+            <TechnologySection />
+            <TestimonialsSection />
+            <CTASection />
+            <FooterSection />
+            <ChatWidget />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
