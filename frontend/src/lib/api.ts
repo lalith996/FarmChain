@@ -107,11 +107,63 @@ export const handleApiError = (error: unknown): ApiError => {
     };
   }
 
+  // Handle Web3/Wagmi errors (which have {code, message} structure)
+  if (error && typeof error === 'object' && 'message' in error) {
+    const err = error as any;
+    return {
+      message: err.message || 'An unexpected error occurred',
+      code: err.code || 'UNKNOWN_ERROR',
+    };
+  }
+
   // Unknown error
   return {
     message: 'An unexpected error occurred',
     code: 'UNEXPECTED_ERROR',
   };
+};
+
+// Web3/Wallet Error Handler
+// Handles Wagmi/Web3 errors that have different structure than API errors
+export const handleWeb3Error = (error: unknown): string => {
+  if (!error) return 'An unknown error occurred';
+
+  // Handle error object with message property
+  if (typeof error === 'object' && error !== null) {
+    const err = error as any;
+
+    // User rejected the request
+    if (err.code === 4001 || err.code === 'ACTION_REJECTED' || err.message?.includes('User rejected')) {
+      return 'Transaction rejected. Please try again.';
+    }
+
+    // Wallet not connected
+    if (err.code === 'CONNECTOR_NOT_FOUND' || err.message?.includes('Connector not found')) {
+      return 'Please connect your wallet first.';
+    }
+
+    // Network error
+    if (err.code === 'NETWORK_ERROR') {
+      return 'Network error. Please check your connection.';
+    }
+
+    // Generic error with message
+    if (err.message) {
+      return String(err.message);
+    }
+
+    // API error structure
+    if (err.response?.data?.message) {
+      return String(err.response.data.message);
+    }
+
+    if (err.response?.data?.error) {
+      return String(err.response.data.error);
+    }
+  }
+
+  // Fallback: convert to string
+  return String(error);
 };
 
 // ============================================================================
