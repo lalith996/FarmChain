@@ -173,3 +173,4 @@ tmp/
 # Backup files
 *.bak
 *.backup
+ml-service/models/*.pkl
