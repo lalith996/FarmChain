@@ -209,6 +209,7 @@ contract SupplyChainRegistry is AccessControl, ReentrancyGuard, Pausable {
         string memory _location,
         uint256 _transferPrice
     ) external payable
+        nonReentrant
         productExists(_productId)
         onlyProductOwner(_productId)
         whenNotPaused
