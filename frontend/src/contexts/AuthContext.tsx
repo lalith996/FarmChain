@@ -76,15 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Configure axios defaults
-  useEffect(() => {
-    if (accessToken) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [accessToken]);
-
   // Load auth state from localStorage on mount
   useEffect(() => {
     const loadAuthState = () => {
@@ -97,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
           setUser(JSON.parse(storedUser));
-          
+
           // Verify token is still valid by fetching current user
           fetchCurrentUser(storedAccessToken);
         } else {
@@ -141,7 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   // Save auth state to localStorage
@@ -206,6 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (accessToken) {
         await axios.post(`${API_BASE_URL}/auth/logout`, {
           refreshToken
+        }, {
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
       }
     } catch (error) {
@@ -230,15 +222,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (response.data.success && response.data.data) {
         const { accessToken: newToken, refreshToken: newRefresh } = response.data.data;
-        
+
         localStorage.setItem('accessToken', newToken);
         if (newRefresh) {
           localStorage.setItem('refreshToken', newRefresh);
           setRefreshToken(newRefresh);
         }
-        
+
         setAccessToken(newToken);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       } else {
         clearAuthState();
       }
@@ -249,40 +240,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [refreshToken, router]);
 
-  // Setup axios interceptor for automatic token refresh
-  useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
-
-          try {
-            await refreshAccessToken();
-            
-            // Retry original request with new token
-            originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-            return axios(originalRequest);
-          } catch (refreshError) {
-            return Promise.reject(refreshError);
-          }
-        }
-
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
-  }, [refreshAccessToken, accessToken]);
+  // NOTE: Axios interceptor removed to prevent memory leak
+  // Token refresh is now handled by the dedicated API client in @/lib/api.ts
+  // This context focuses on state management only
 
   // Check if user has specific role(s)
   const hasRole = (roles: string | string[]): boolean => {
     if (!user) return false;
-    
+
     const roleArray = Array.isArray(roles) ? roles : [roles];
     return roleArray.some(role => user.roles.includes(role));
   };
@@ -290,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check if user has specific permission(s)
   const hasPermission = (permissions: string | string[]): boolean => {
     if (!user) return false;
-    
+
     const permArray = Array.isArray(permissions) ? permissions : [permissions];
     return permArray.every(perm => checkPermission(perm));
   };
@@ -298,17 +263,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check single permission with wildcard support
   const checkPermission = (permission: string): boolean => {
     if (!user) return false;
-    
+
     // Check for wildcard permission (admin has all)
     if (user.permissions.includes('*')) return true;
-    
+
     // Check exact match
     if (user.permissions.includes(permission)) return true;
-    
+
     // Check category wildcard (e.g., "product_management:*")
     const [category] = permission.split(':');
     if (user.permissions.includes(`${category}:*`)) return true;
-    
+
     return false;
   };
 
@@ -320,9 +285,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check if user requires KYC
   const requiresKYC = (): boolean => {
     if (!user) return false;
-    
+
     const kycRequiredRoles = ['FARMER', 'DISTRIBUTOR'];
-    return kycRequiredRoles.includes(user.primaryRole) && 
+    return kycRequiredRoles.includes(user.primaryRole) &&
            user.verification.kycStatus !== 'approved';
   };
 

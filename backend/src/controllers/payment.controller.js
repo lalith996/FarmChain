@@ -3,6 +3,7 @@ const Order = require('../models/Order.model');
 const blockchainService = require('../config/blockchain');
 const logger = require('../utils/logger');
 const { ethers } = require('ethers');
+const exchangeRateService = require('../services/exchangeRate.service');
 
 /**
  * @desc    Create escrow payment for order
