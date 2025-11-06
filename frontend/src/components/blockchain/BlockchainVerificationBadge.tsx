@@ -10,7 +10,7 @@ import {
   ArrowTopRightOnSquareIcon,
   ClockIcon,
   DocumentTextIcon,
-  FingerprintIcon
+  IdentificationIcon
 } from '@heroicons/react/24/outline';
 
 interface BlockchainData {
@@ -251,7 +251,7 @@ export function BlockchainVerificationBadge({
                     {blockchainData.gasUsed && (
                       <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                         <div className="flex items-center mb-2">
-                          <FingerprintIcon className="h-4 w-4 text-orange-600 mr-2" />
+                          <IdentificationIcon className="h-4 w-4 text-orange-600 mr-2" />
                           <span className="text-xs font-medium text-orange-900">Gas Used</span>
                         </div>
                         <p className="text-sm font-semibold text-orange-900">
@@ -265,7 +265,7 @@ export function BlockchainVerificationBadge({
                   {blockchainData.dataHash && (
                     <div className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center mb-2">
-                        <FingerprintIcon className="h-4 w-4 text-gray-600 mr-2" />
+                        <IdentificationIcon className="h-4 w-4 text-gray-600 mr-2" />
                         <span className="text-sm font-medium text-gray-700">Data Hash (IPFS/Storage)</span>
                       </div>
                       <p className="font-mono text-sm text-gray-900 break-all bg-white px-3 py-2 rounded border border-gray-200">

@@ -315,7 +315,7 @@ export default function SystemHealthPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Replication Lag</span>
-                    <span className="font-semibold text-green-600">< 1ms</span>
+                    <span className="font-semibold text-green-600">&lt; 1ms</span>
                   </div>
                 </div>
               </div>
