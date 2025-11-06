@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { ethers } = require('ethers');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model'); // FIX #12 & #13: Using consolidated User model
 const AuditLog = require('../models/AuditLog.model');
 const Role = require('../models/Role.model');
+const redisService = require('../services/redis.service'); // FIX #11: Check token blacklist
 
 /**
  * Authenticate user via JWT token
@@ -21,6 +22,16 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // FIX #11: Check if token is blacklisted
+    const isBlacklisted = await redisService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token has been revoked. Please login again.',
+        code: 'TOKEN_REVOKED'
+      });
+    }
 
     // Verify JWT token
     let decoded;

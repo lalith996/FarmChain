@@ -67,6 +67,7 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
     // State variables
     uint256 public productCount;
     uint256 public batchCount;
+    uint256 public constant MAX_BATCH_SIZE = 100; // FIX #6: Maximum products per batch
     
     mapping(uint256 => Product) public products;
     mapping(uint256 => OwnershipTransfer[]) public ownershipHistory;
@@ -74,6 +75,7 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
     mapping(uint256 => address) public currentOwner;
     mapping(address => uint256[]) public userProducts;
     mapping(uint256 => ProductBatch) public batches;
+    mapping(bytes32 => bool) private batchHashes; // FIX #5: Duplicate batch detection
     
     // Tracking
     mapping(address => uint256) public productsCreatedToday;
@@ -194,7 +196,7 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
     }
 
     /**
-     * @dev Register a new product
+     * @dev Register a new product in the supply chain
      * @param _name Product name
      * @param _category Product category
      * @param _quantity Product quantity
@@ -202,6 +204,8 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
      * @param _pricePerUnit Price per unit
      * @param _wholesalePrice Wholesale price per unit
      * @param _ipfsHash IPFS hash of product metadata
+     * FIX #7: Already has nonReentrant
+     * FIX #8: Enhanced input validation
      */
     function registerProduct(
         string memory _name,
@@ -212,10 +216,14 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
         uint256 _wholesalePrice,
         string memory _ipfsHash
     ) external canPerformAction(accessControl.FARMER_ROLE()) nonReentrant returns (uint256) {
-        require(bytes(_name).length > 0, "Product name required");
-        require(bytes(_category).length > 0, "Category required");
-        require(_quantity > 0, "Quantity must be greater than 0");
-        require(_pricePerUnit > 0, "Price must be greater than 0");
+        // FIX #8: Enhanced input validation
+        require(bytes(_name).length > 0 && bytes(_name).length <= 100, "Invalid product name length");
+        require(bytes(_category).length > 0 && bytes(_category).length <= 50, "Invalid category length");
+        require(_quantity > 0 && _quantity <= 1000000, "Invalid quantity");
+        require(bytes(_unit).length > 0 && bytes(_unit).length <= 20, "Invalid unit length");
+        require(_pricePerUnit > 0 && _pricePerUnit <= 10000 ether, "Invalid price range");
+        require(_wholesalePrice > 0 && _wholesalePrice <= _pricePerUnit, "Wholesale price must be <= retail price");
+        require(bytes(_ipfsHash).length > 0 && bytes(_ipfsHash).length <= 100, "Invalid IPFS hash");
 
         // Check daily rate limit (50 products per day for farmers)
         _checkAndUpdateRateLimit(msg.sender, 50);
@@ -450,18 +458,38 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
      * @param _productIds Array of product IDs
      * @param _batchMetadata Batch metadata IPFS hash
      */
+    /**
+     * @dev Create a batch of products
+     * @param _productIds Array of product IDs to include in batch
+     * @param _batchMetadata IPFS hash or metadata
+     * @return uint256 Batch ID
+     * FIX #5: Duplicate check for batches
+     * FIX #6: Maximum batch size limit
+     * FIX #16: Gas limit DoS protection
+     */
     function createBatch(
         uint256[] memory _productIds,
         string memory _batchMetadata
     ) external canPerformAction(accessControl.FARMER_ROLE()) returns (uint256) {
         require(_productIds.length > 0, "Batch must contain at least one product");
+        require(_productIds.length <= MAX_BATCH_SIZE, "Batch size exceeds maximum limit"); // FIX #6
 
+        // FIX #5: Check for duplicate batch using product IDs hash
+        bytes32 batchHash = keccak256(abi.encodePacked(_productIds, msg.sender));
+        require(!batchHashes[batchHash], "Duplicate batch already exists");
+
+        // FIX #16: Loop protection - limit enforced above
         // Verify all products belong to caller
         for (uint256 i = 0; i < _productIds.length; i++) {
             require(
                 products[_productIds[i]].farmer == msg.sender,
                 "All products must belong to caller"
             );
+            
+            // FIX #5: Check for duplicate product IDs within batch
+            for (uint256 j = i + 1; j < _productIds.length; j++) {
+                require(_productIds[i] != _productIds[j], "Duplicate product in batch");
+            }
         }
 
         batchCount++;
@@ -474,6 +502,9 @@ contract SupplyChainRegistryV2 is ReentrancyGuard {
             createdAt: block.timestamp,
             batchMetadata: _batchMetadata
         });
+        
+        // FIX #5: Mark batch as created
+        batchHashes[batchHash] = true;
 
         emit BatchCreated(batchId, msg.sender, _productIds.length, block.timestamp);
 

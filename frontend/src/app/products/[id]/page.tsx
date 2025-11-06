@@ -396,7 +396,7 @@ export default function ProductDetailPage() {
                         </p>
                       </div>
                       <a
-                        href={`https://mumbai.polygonscan.com/tx/${product.registrationTxHash}`}
+                        href={`https://www.oklink.com/amoy/tx/${product.registrationTxHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="ml-4 text-sm text-green-600 hover:text-green-700 font-medium"

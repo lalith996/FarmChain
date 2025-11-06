@@ -1,5 +1,5 @@
 const { ethers } = require('ethers');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model');
 const Role = require('../models/Role.model');
 const Permission = require('../models/Permission.model');
 const AuditLog = require('../models/AuditLog.model');

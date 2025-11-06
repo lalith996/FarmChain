@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 const paymentController = require('../controllers/payment.controller');
 
 // Payment routes
-router.post('/create', protect, paymentController.createPayment);
-router.post('/release', protect, paymentController.releasePayment);
-router.post('/refund', protect, paymentController.requestRefund);
-router.post('/cancel', protect, paymentController.cancelPayment);
-router.post('/resolve-dispute', protect, paymentController.resolveDispute);
-router.get('/stats', protect, paymentController.getPaymentStats);
-router.get('/:paymentId', protect, paymentController.getPaymentDetails);
+router.post('/create', authenticate, paymentController.createPayment);
+router.post('/release', authenticate, paymentController.releasePayment);
+router.post('/refund', authenticate, paymentController.requestRefund);
+router.post('/cancel', authenticate, paymentController.cancelPayment);
+router.post('/resolve-dispute', authenticate, paymentController.resolveDispute);
+router.get('/stats', authenticate, paymentController.getPaymentStats);
+router.get('/:paymentId', authenticate, paymentController.getPaymentDetails);
 
 module.exports = router;

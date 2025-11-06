@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 
 // Placeholder routes
-router.post('/upload', protect, (req, res) => {
+router.post('/upload', authenticate, (req, res) => {
   res.json({ success: true, message: 'IPFS upload endpoint' });
 });
 

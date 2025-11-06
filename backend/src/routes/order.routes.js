@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 const orderController = require('../controllers/order.controller');
 
 // Order routes
-router.post('/create', protect, orderController.createOrder);
-router.get('/', protect, orderController.getOrders);
-router.get('/stats', protect, orderController.getOrderStats);
-router.get('/:orderId', protect, orderController.getOrderById);
-router.put('/:orderId/status', protect, orderController.updateOrderStatus);
-router.put('/:orderId/cancel', protect, orderController.cancelOrder);
-router.post('/:orderId/rate', protect, orderController.rateOrder);
-router.post('/:orderId/dispute', protect, orderController.raiseDispute);
+router.post('/create', authenticate, orderController.createOrder);
+router.get('/', authenticate, orderController.getOrders);
+router.get('/stats', authenticate, orderController.getOrderStats);
+router.get('/:orderId', authenticate, orderController.getOrderById);
+router.put('/:orderId/status', authenticate, orderController.updateOrderStatus);
+router.put('/:orderId/cancel', authenticate, orderController.cancelOrder);
+router.post('/:orderId/rate', authenticate, orderController.rateOrder);
+router.post('/:orderId/dispute', authenticate, orderController.raiseDispute);
 
 module.exports = router;

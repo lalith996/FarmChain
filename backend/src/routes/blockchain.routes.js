@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 const blockchainController = require('../controllers/blockchain.controller');
 
 // Public routes
@@ -13,8 +13,8 @@ router.post('/verify-signature', blockchainController.verifySignature);
 router.post('/estimate-gas', blockchainController.estimateGas);
 
 // Protected routes
-router.get('/payment/:paymentId', protect, blockchainController.getPayment);
-router.post('/transfer', protect, blockchainController.transferOwnership);
-router.post('/update-status', protect, blockchainController.updateProductStatus);
+router.get('/payment/:paymentId', authenticate, blockchainController.getPayment);
+router.post('/transfer', authenticate, blockchainController.transferOwnership);
+router.post('/update-status', authenticate, blockchainController.updateProductStatus);
 
 module.exports = router;

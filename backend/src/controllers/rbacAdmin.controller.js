@@ -2,7 +2,7 @@ const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const rbacService = require('../services/rbac.service');
 const verificationService = require('../services/verification.service');
 const rateLimitService = require('../services/rateLimit.service');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model');
 const AuditLog = require('../models/AuditLog.model');
 
 /**

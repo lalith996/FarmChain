@@ -419,7 +419,7 @@ export default function OrderDetailPage() {
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-xs text-gray-600 mb-1">Transaction Hash:</p>
                   <a
-                    href={`https://mumbai.polygonscan.com/tx/${order.payment.transactionHash}`}
+                    href={`https://www.oklink.com/amoy/tx/${order.payment.transactionHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:text-blue-700 break-all"
@@ -441,7 +441,7 @@ export default function OrderDetailPage() {
                   This order is recorded on the blockchain for transparency and security.
                 </p>
                 <a
-                  href={`https://mumbai.polygonscan.com/tx/${order.blockchainTxHash}`}
+                  href={`https://www.oklink.com/amoy/tx/${order.blockchainTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-green-600 hover:text-green-700 font-medium"

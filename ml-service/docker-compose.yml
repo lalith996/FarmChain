@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - ML_SERVICE_PORT=5001
+      - FLASK_ENV=production
+    volumes:
+      - ./models:/app/models
+    restart: unless-stopped

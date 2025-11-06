@@ -1,36 +1,52 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Web3Provider } from "@/components/providers/Web3Provider";
-import { ToastProvider } from "@/components/providers/ToastProvider";
-import { Navigation } from "@/components/layout/Navigation";
-import { Footer } from "@/components/layout/Footer";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Web3Provider } from '@/components/providers/Web3Provider';
+import { Toaster } from 'react-hot-toast';
+import { ChatWidget } from '@/components/chatbot/ChatWidget';
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "FarmChain - Agricultural Supply Chain on Blockchain",
-  description: "Transparent and secure agricultural supply chain management powered by blockchain technology",
+  title: 'FarmChain - Blockchain-Powered Agricultural Supply Chain',
+  description: 'Transparent, traceable, and efficient agricultural supply chain powered by blockchain technology',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen`} suppressHydrationWarning>
+    <html lang="en">
+      <body className={inter.className}>
         <Web3Provider>
-          <Navigation />
-          <main className="flex-grow">
-            {children}
-          </main>
-          <Footer />
-          <ToastProvider />
+          {children}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+          <ChatWidget />
         </Web3Provider>
       </body>
     </html>

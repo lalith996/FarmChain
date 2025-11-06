@@ -39,36 +39,36 @@ const verificationController = require('../controllers/verification.controller')
 // Generate nonce for wallet signature
 router.post('/auth/nonce',
   rateLimitByRole('login_attempt', 'minute'),
-  auditLog(),
+  auditLog,
   authController.getNonce
 );
 
 // Register new user
 router.post('/auth/register',
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   authController.register
 );
 
 // Login with wallet signature
 router.post('/auth/login',
   customActionLimit('login_attempt', 5, 15), // 5 attempts per 15 minutes
-  auditLog(),
+  auditLog,
   authController.login
 );
 
 // Refresh access token
 router.post('/auth/refresh',
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   authController.refreshToken
 );
 
 // Legacy verify endpoint (backward compatibility)
 router.post('/auth/verify',
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
-  authController.verifySignature
+  auditLog,
+  authController.verifyWallet
 );
 
 /**
@@ -79,27 +79,27 @@ router.post('/auth/verify',
 
 // Get current user
 router.get('/auth/me',
-  authenticate(),
+  authenticate,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   authController.getMe
 );
 
 // Logout
 router.post('/auth/logout',
-  authenticate(),
+  authenticate,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   authController.logout
 );
 
-// Change password
-router.post('/auth/change-password',
-  authenticate(),
-  customActionLimit('password_reset', 3, 60), // 3 attempts per hour
-  auditCriticalAction(),
-  authController.changePassword
-);
+// Change password - TODO: Implement changePassword in auth.controller
+// router.post('/auth/change-password',
+//   authenticate,
+//   customActionLimit('password_reset', 3, 60), // 3 attempts per hour
+//   auditCriticalAction,
+//   authController.changePassword
+// );
 
 /**
  * ========================================
@@ -109,34 +109,34 @@ router.post('/auth/change-password',
 
 // Initiate KYC
 router.post('/verification/kyc',
-  authenticate(),
+  authenticate,
   rateLimitByRole('kyc_submission', 'day'),
-  auditLog(),
+  auditLog,
   verificationController.initiateKYC
 );
 
 // Resubmit KYC
 router.post('/verification/kyc/resubmit',
-  authenticate(),
+  authenticate,
   rateLimitByRole('kyc_submission', 'day'),
-  auditLog(),
+  auditLog,
   verificationController.resubmitKYC
 );
 
 // Get verification status
 router.get('/verification/status',
-  authenticate(),
+  authenticate,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   verificationController.getVerificationStatus
 );
 
 // Verify business license
 router.post('/verification/business-license',
-  authenticate(),
+  authenticate,
   requireRole('DISTRIBUTOR', 'RETAILER'),
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   verificationController.verifyBusinessLicense
 );
 
@@ -148,74 +148,74 @@ router.post('/verification/business-license',
 
 // Get role hierarchy
 router.get('/admin/rbac/roles/hierarchy',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:view_roles'),
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   rbacAdminController.getRoleHierarchy
 );
 
 // Get user RBAC details
 router.get('/admin/rbac/users/:userId',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:view_users'),
-  validatePagination(),
+  validatePagination,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   rbacAdminController.getUserRBAC
 );
 
 // Grant role to user
 router.post('/admin/rbac/users/:userId/grant-role',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:assign_roles'),
-  validateRoleAssignment(),
+  validateRoleAssignment,
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.grantRole
 );
 
 // Revoke role from user
 router.post('/admin/rbac/users/:userId/revoke-role',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:assign_roles'),
-  validateRoleRevocation(),
+  validateRoleRevocation,
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.revokeRole
 );
 
 // Suspend user
 router.post('/admin/rbac/users/:userId/suspend',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:suspend_users'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.suspendUser
 );
 
 // Reactivate user
 router.post('/admin/rbac/users/:userId/reactivate',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:suspend_users'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.reactivateUser
 );
 
 // Update verification level
 router.post('/admin/rbac/users/:userId/verification-level',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:update_verification_level'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.updateVerificationLevel
 );
 
@@ -227,32 +227,32 @@ router.post('/admin/rbac/users/:userId/verification-level',
 
 // Get pending KYC submissions
 router.get('/admin/rbac/kyc/pending',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:approve_kyc'),
-  validatePagination(),
+  validatePagination,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   rbacAdminController.getPendingKYC
 );
 
 // Approve KYC
 router.post('/admin/rbac/kyc/:userId/approve',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:approve_kyc'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.approveKYC
 );
 
 // Reject KYC
 router.post('/admin/rbac/kyc/:userId/reject',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('user_management:approve_kyc'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.rejectKYC
 );
 
@@ -264,31 +264,31 @@ router.post('/admin/rbac/kyc/:userId/reject',
 
 // Reset user rate limits
 router.post('/admin/rbac/users/:userId/reset-rate-limits',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('admin_functions:manage_rate_limits'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.resetRateLimits
 );
 
 // Block user for specific action
 router.post('/admin/rbac/users/:userId/block',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('admin_functions:block_users'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.blockUser
 );
 
 // Unblock user
 router.post('/admin/rbac/users/:userId/unblock',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('admin_functions:block_users'),
   rateLimitByRole('api_call', 'minute'),
-  auditCriticalAction(),
+  auditCriticalAction,
   rbacAdminController.unblockUser
 );
 
@@ -300,23 +300,23 @@ router.post('/admin/rbac/users/:userId/unblock',
 
 // Get audit logs
 router.get('/admin/rbac/audit-logs',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('admin_functions:view_audit_logs'),
-  validatePagination(),
+  validatePagination,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   rbacAdminController.getAuditLogs
 );
 
 // Get suspicious activities
 router.get('/admin/rbac/suspicious-activities',
-  authenticate(),
+  authenticate,
   requireRole('ADMIN', 'SUPER_ADMIN'),
   requirePermission('admin_functions:view_audit_logs'),
-  validatePagination(),
+  validatePagination,
   rateLimitByRole('api_call', 'minute'),
-  auditLog(),
+  auditLog,
   rbacAdminController.getSuspiciousActivities
 );
 

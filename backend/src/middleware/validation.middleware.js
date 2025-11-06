@@ -1,5 +1,5 @@
 const Role = require('../models/Role.model');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model');
 
 /**
  * Validate role assignment is allowed

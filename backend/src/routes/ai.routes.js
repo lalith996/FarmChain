@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 
 // Placeholder routes
-router.post('/predict-yield', protect, (req, res) => {
+router.post('/predict-yield', authenticate, (req, res) => {
   res.json({ success: true, message: 'Yield prediction endpoint' });
 });
 
-router.post('/assess-quality', protect, (req, res) => {
+router.post('/assess-quality', authenticate, (req, res) => {
   res.json({ success: true, message: 'Quality assessment endpoint' });
 });
 
-router.post('/predict-price', protect, (req, res) => {
+router.post('/predict-price', authenticate, (req, res) => {
   res.json({ success: true, message: 'Price prediction endpoint' });
 });
 

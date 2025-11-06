@@ -184,13 +184,36 @@ rateLimitTrackerSchema.statics.checkLimit = async function(userId, walletAddress
 
 /**
  * Increment rate limit counter
+ * FIX #26: Use atomic operations to prevent race conditions
  */
 rateLimitTrackerSchema.statics.increment = async function(userId, walletAddress, action, limit, windowType = 'minute', ipAddress = null) {
   const now = new Date();
   const windowStart = this.getWindowStart(now, windowType);
   const windowEnd = this.getWindowEnd(windowStart, windowType);
 
-  // Find or create tracker
+  // FIX #26: Use atomic findOneAndUpdate with conditional blocking
+  // This prevents race conditions by doing everything in a single atomic operation
+  const updateOps = {
+    $inc: { count: 1 },
+    $set: {
+      walletAddress,
+      limit,
+      'metadata.lastAttemptAt': now
+    },
+    $setOnInsert: {
+      windowType,
+      windowStart,
+      windowEnd,
+      isBlocked: false
+    }
+  };
+
+  // Add IP address if provided
+  if (ipAddress) {
+    updateOps.$addToSet = { 'metadata.ipAddresses': ipAddress };
+  }
+
+  // Atomically increment and retrieve the updated document
   const tracker = await this.findOneAndUpdate(
     {
       userId,
@@ -198,33 +221,60 @@ rateLimitTrackerSchema.statics.increment = async function(userId, walletAddress,
       windowStart: { $lte: now },
       windowEnd: { $gte: now }
     },
-    {
-      $inc: { count: 1 },
-      $set: {
-        walletAddress,
-        limit,
-        'metadata.lastAttemptAt': now
-      },
-      $addToSet: ipAddress ? { 'metadata.ipAddresses': ipAddress } : {},
-      $setOnInsert: {
-        windowType,
-        windowStart,
-        windowEnd,
-        isBlocked: false
-      }
-    },
+    updateOps,
     {
       upsert: true,
-      new: true
+      new: true,
+      runValidators: true
     }
   );
 
-  // Check if limit exceeded
+  // FIX #26: Check if limit exceeded AFTER atomic increment
+  // Use a separate atomic update to set block status if needed
   if (tracker.count > tracker.limit && !tracker.isBlocked) {
-    await tracker.block('Rate limit exceeded', windowType);
+    // Atomic update to block - only if not already blocked (prevents duplicate blocks)
+    await this.findOneAndUpdate(
+      {
+        _id: tracker._id,
+        isBlocked: false, // Only block if not already blocked
+        count: { $gt: limit } // Double-check count is still over limit
+      },
+      {
+        $set: {
+          isBlocked: true,
+          blockReason: 'Rate limit exceeded',
+          blockedAt: now,
+          blockedUntil: new Date(Date.now() + this._getBlockDuration(windowType))
+        },
+        $push: {
+          violations: {
+            timestamp: now,
+            attemptedCount: tracker.count,
+            ipAddress: ipAddress || tracker.metadata.ipAddresses[tracker.metadata.ipAddresses.length - 1]
+          }
+        },
+        $inc: { 'metadata.totalViolations': 1 }
+      }
+    );
   }
 
-  return tracker;
+  // Fetch the final state
+  return await this.findById(tracker._id);
+};
+
+/**
+ * Helper to get block duration in milliseconds
+ * @private
+ */
+rateLimitTrackerSchema.statics._getBlockDuration = function(windowType) {
+  const durationMs = {
+    'minute': 60 * 1000,
+    'hour': 60 * 60 * 1000,
+    'day': 24 * 60 * 60 * 1000,
+    'week': 7 * 24 * 60 * 60 * 1000,
+    'month': 30 * 24 * 60 * 60 * 1000
+  };
+  return durationMs[windowType] || durationMs.hour;
 };
 
 /**

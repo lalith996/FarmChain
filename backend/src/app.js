@@ -23,6 +23,16 @@ const aiRoutes = require('./routes/ai.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const adminRoutes = require('./routes/admin.routes');
 const rbacRoutes = require('./routes/rbac.routes');
+const chatbotRoutes = require('./routes/chatbot.routes');
+const wishlistRoutes = require('./routes/wishlist.routes');
+const reviewRoutes = require('./routes/review.routes');
+const comparisonRoutes = require('./routes/comparison.routes');
+const deliveryRoutes = require('./routes/delivery.routes');
+const invoiceRoutes = require('./routes/invoice.routes');
+const bulkPricingRoutes = require('./routes/bulkPricing.routes');
+const savedSearchRoutes = require('./routes/savedSearch.routes');
+const qrRoutes = require('./routes/qr.routes');
+const subscriptionRoutes = require('./routes/subscription.routes');
 
 const app = express();
 
@@ -77,6 +87,16 @@ app.use(`/api/${apiVersion}/ipfs`, ipfsRoutes);
 app.use(`/api/${apiVersion}/ai`, aiRoutes);
 app.use(`/api/${apiVersion}/notifications`, notificationRoutes);
 app.use(`/api/${apiVersion}/admin`, adminRoutes);
+app.use(`/api/${apiVersion}/chatbot`, chatbotRoutes);
+app.use(`/api/${apiVersion}/wishlists`, wishlistRoutes);
+app.use(`/api/${apiVersion}/reviews`, reviewRoutes);
+app.use(`/api/${apiVersion}/comparisons`, comparisonRoutes);
+app.use(`/api/${apiVersion}/delivery`, deliveryRoutes);
+app.use(`/api/${apiVersion}/invoices`, invoiceRoutes);
+app.use(`/api/${apiVersion}/bulk-pricing`, bulkPricingRoutes);
+app.use(`/api/${apiVersion}/saved-searches`, savedSearchRoutes);
+app.use(`/api/${apiVersion}/qr`, qrRoutes);
+app.use(`/api/${apiVersion}/subscriptions`, subscriptionRoutes);
 
 // 404 Handler
 app.use((req, res) => {

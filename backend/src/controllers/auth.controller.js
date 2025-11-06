@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model'); // FIX #12: Use consolidated User model
 const blockchainService = require('../config/blockchain');
 const authService = require('../services/auth.service');
 

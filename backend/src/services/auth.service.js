@@ -1,14 +1,15 @@
 const jwt = require('jsonwebtoken');
 const { ethers } = require('ethers');
 const crypto = require('crypto');
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model'); // FIX #12: Using consolidated User model
 const Role = require('../models/Role.model');
 const AuditLog = require('../models/AuditLog.model');
+const redisService = require('./redis.service');
 
-// In-memory storage for nonces and refresh tokens (use Redis in production)
-const nonceStore = new Map();
-const refreshTokenStore = new Map();
-const blacklistedTokens = new Set();
+// FIX #9: Removed in-memory storage - now using Redis
+// const nonceStore = new Map();
+// const refreshTokenStore = new Map();
+// const blacklistedTokens = new Set();
 
 /**
  * Authentication Service
@@ -24,15 +25,8 @@ class AuthService {
     const nonce = crypto.randomBytes(16).toString('hex');
     const timestamp = Date.now();
 
-    // Store nonce with expiry (5 minutes)
-    nonceStore.set(walletAddress.toLowerCase(), {
-      nonce,
-      timestamp,
-      expiresAt: timestamp + 5 * 60 * 1000
-    });
-
-    // Clean up expired nonces
-    this._cleanupExpiredNonces();
+    // FIX #9: Store nonce in Redis with 5-minute expiry
+    await redisService.storeNonce(walletAddress.toLowerCase(), nonce, 300);
 
     return { nonce, timestamp };
   }
@@ -112,8 +106,8 @@ class AuthService {
     // Generate tokens
     const tokens = this._generateTokens(user);
 
-    // Store refresh token
-    this._storeRefreshToken(user._id, tokens.refreshToken);
+    // FIX #9: Store refresh token in Redis
+    await redisService.storeRefreshToken(user._id.toString(), tokens.refreshToken);
 
     // Log registration
     await AuditLog.logAction({
@@ -233,8 +227,8 @@ class AuthService {
     // Generate tokens
     const tokens = this._generateTokens(user);
 
-    // Store refresh token
-    this._storeRefreshToken(user._id, tokens.refreshToken);
+    // FIX #9: Store refresh token in Redis
+    await redisService.storeRefreshToken(user._id.toString(), tokens.refreshToken);
 
     // Log successful login
     await AuditLog.logAction({
@@ -268,22 +262,24 @@ class AuthService {
       throw new Error('Refresh token is required');
     }
 
-    // Check if token is blacklisted
-    if (blacklistedTokens.has(refreshToken)) {
+    // FIX #9: Check if token is blacklisted in Redis
+    const isBlacklisted = await redisService.isTokenBlacklisted(refreshToken);
+    if (isBlacklisted) {
       throw new Error('Refresh token has been revoked');
     }
 
     // Verify refresh token
+    // FIX #14: Use JWT_REFRESH_SECRET (no fallback - validated at startup)
     let decoded;
     try {
-      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (error) {
       throw new Error('Invalid or expired refresh token');
     }
 
-    // Check if refresh token exists in store
-    const storedTokens = refreshTokenStore.get(decoded.userId.toString());
-    if (!storedTokens || !storedTokens.includes(refreshToken)) {
+    // FIX #9: Check if refresh token exists in Redis
+    const storedToken = await redisService.getRefreshToken(decoded.userId.toString());
+    if (!storedToken || storedToken !== refreshToken) {
       throw new Error('Refresh token not found or has been revoked');
     }
 
@@ -302,12 +298,16 @@ class AuthService {
 
     // Optionally rotate refresh token (recommended for security)
     if (process.env.REFRESH_TOKEN_ROTATION === 'true') {
-      // Revoke old refresh token
-      this._revokeRefreshToken(user._id, refreshToken);
-      blacklistedTokens.add(refreshToken);
+      // FIX #9: Revoke old refresh token in Redis
+      await redisService.deleteRefreshToken(user._id.toString());
+      
+      // Blacklist old token
+      const decoded = jwt.decode(refreshToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      await redisService.blacklistToken(refreshToken, expiresIn);
 
       // Store new refresh token
-      this._storeRefreshToken(user._id, tokens.refreshToken);
+      await redisService.storeRefreshToken(user._id.toString(), tokens.refreshToken);
     } else {
       // Keep same refresh token
       tokens.refreshToken = refreshToken;
@@ -340,15 +340,24 @@ class AuthService {
    * @param {string} refreshToken - Refresh token to revoke
    */
   async logout(userId, accessToken, refreshToken) {
-    // Blacklist access token
+    // FIX #9: Blacklist access token in Redis
     if (accessToken) {
-      blacklistedTokens.add(accessToken);
+      const decoded = jwt.decode(accessToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      if (expiresIn > 0) {
+        await redisService.blacklistToken(accessToken, expiresIn);
+      }
     }
 
-    // Revoke refresh token
+    // FIX #9: Revoke refresh token in Redis
     if (refreshToken) {
-      this._revokeRefreshToken(userId, refreshToken);
-      blacklistedTokens.add(refreshToken);
+      await redisService.deleteRefreshToken(userId.toString());
+      
+      const decoded = jwt.decode(refreshToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      if (expiresIn > 0) {
+        await redisService.blacklistToken(refreshToken, expiresIn);
+      }
     }
 
     // Log logout
@@ -370,22 +379,23 @@ class AuthService {
   async verifyWalletOwnership(data) {
     const { walletAddress, signature, message, nonce } = data;
 
-    // Get stored nonce
-    const storedNonceData = nonceStore.get(walletAddress.toLowerCase());
+    // FIX #9 & #10: Get stored nonce from Redis
+    const storedNonceData = await redisService.getNonce(walletAddress.toLowerCase());
     
     if (!storedNonceData) {
       throw new Error('Nonce not found. Please request a new nonce.');
     }
 
-    // Check if nonce has expired
-    if (Date.now() > storedNonceData.expiresAt) {
-      nonceStore.delete(walletAddress.toLowerCase());
-      throw new Error('Nonce expired. Please request a new nonce.');
-    }
-
-    // Verify nonce matches
+    // FIX #10: Verify nonce matches (nonce validation)
     if (storedNonceData.nonce !== nonce) {
       throw new Error('Invalid nonce');
+    }
+
+    // Check if nonce has expired (Redis handles TTL, but double-check timestamp)
+    const nonceAge = Date.now() - storedNonceData.timestamp;
+    if (nonceAge > 5 * 60 * 1000) { // 5 minutes
+      await redisService.deleteNonce(walletAddress.toLowerCase());
+      throw new Error('Nonce expired. Please request a new nonce.');
     }
 
     // Verify message format
@@ -420,8 +430,8 @@ class AuthService {
       throw new Error('Signature verification failed. Address mismatch.');
     }
 
-    // Delete used nonce to prevent replay attacks
-    nonceStore.delete(walletAddress.toLowerCase());
+    // FIX #9: Delete used nonce from Redis to prevent replay attacks
+    await redisService.deleteNonce(walletAddress.toLowerCase());
 
     return true;
   }
@@ -474,11 +484,12 @@ class AuthService {
 
   /**
    * Check if token is blacklisted
+   * FIX #9 & #11: Check Redis instead of in-memory
    * @param {string} token - Token to check
    * @returns {boolean}
    */
-  isTokenBlacklisted(token) {
-    return blacklistedTokens.has(token);
+  async isTokenBlacklisted(token) {
+    return await redisService.isTokenBlacklisted(token);
   }
 
   /**
@@ -499,54 +510,18 @@ class AuthService {
       { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
     );
 
+    // FIX #14: No fallback - JWT_REFRESH_SECRET is required (validated at startup)
     const refreshToken = jwt.sign(
       { userId: user._id.toString() },
-      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      process.env.JWT_REFRESH_SECRET,
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
     );
 
     return { accessToken, refreshToken };
   }
 
-  /**
-   * Store refresh token
-   * @private
-   */
-  _storeRefreshToken(userId, refreshToken) {
-    const userIdStr = userId.toString();
-    if (!refreshTokenStore.has(userIdStr)) {
-      refreshTokenStore.set(userIdStr, []);
-    }
-    refreshTokenStore.get(userIdStr).push(refreshToken);
-  }
-
-  /**
-   * Revoke refresh token
-   * @private
-   */
-  _revokeRefreshToken(userId, refreshToken) {
-    const userIdStr = userId.toString();
-    const tokens = refreshTokenStore.get(userIdStr);
-    if (tokens) {
-      const index = tokens.indexOf(refreshToken);
-      if (index > -1) {
-        tokens.splice(index, 1);
-      }
-    }
-  }
-
-  /**
-   * Clean up expired nonces
-   * @private
-   */
-  _cleanupExpiredNonces() {
-    const now = Date.now();
-    for (const [address, data] of nonceStore.entries()) {
-      if (now > data.expiresAt) {
-        nonceStore.delete(address);
-      }
-    }
-  }
+  // FIX #9: Removed in-memory helper methods - now using Redis service
+  // _storeRefreshToken, _revokeRefreshToken, _cleanupExpiredNonces
 
   /**
    * Sanitize user object for response

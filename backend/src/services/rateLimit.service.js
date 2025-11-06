@@ -1,4 +1,4 @@
-const User = require('../models/UserRBAC.model');
+const User = require('../models/User.model'); // FIX #12: Use consolidated User model
 const Role = require('../models/Role.model');
 const RateLimitTracker = require('../models/RateLimitTracker.model');
 const AuditLog = require('../models/AuditLog.model');

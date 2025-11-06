@@ -32,6 +32,7 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
         address to;
         uint256 executeAfter;
         bool executed;
+        bool cancelled; // FIX #2: Separate cancelled state
     }
 
     mapping(uint256 => RoleTransfer) public pendingTransfers;
@@ -110,8 +111,14 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
         uint8 newLevel
     );
 
+    event AccessControlInitialized(
+        address indexed deployer,
+        uint256 timestamp
+    );
+
     /**
      * @dev Constructor - Initialize role hierarchy
+     * FIX #4: Emit events for initial role grants
      */
     constructor() {
         // Grant deployer the super admin role
@@ -132,6 +139,9 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
         _setRoleAdmin(DISTRIBUTOR_ROLE, ADMIN_ROLE);
         _setRoleAdmin(RETAILER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(CONSUMER_ROLE, ADMIN_ROLE);
+        
+        // FIX #4: Emit initialization event
+        emit AccessControlInitialized(msg.sender, block.timestamp);
     }
 
     /**
@@ -214,13 +224,16 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
      * @param role The role to transfer
      * @param from Current role holder
      * @param to New role holder
+     * FIX #8: Enhanced input validation
      */
     function initiateRoleTransfer(
         bytes32 role,
         address from,
         address to
     ) external onlyRole(SUPER_ADMIN_ROLE) returns (uint256) {
+        // FIX #1: Zero address validation
         require(from != address(0) && to != address(0), "Invalid addresses");
+        require(from != to, "Cannot transfer to same address"); // FIX #8
         require(hasRole(role, from), "From address does not have role");
         require(!hasRole(role, to), "To address already has role");
 
@@ -232,7 +245,8 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
             from: from,
             to: to,
             executeAfter: executeAfter,
-            executed: false
+            executed: false,
+            cancelled: false // FIX #2: Initialize cancelled state
         });
 
         emit RoleTransferInitiated(transferId, role, from, to, executeAfter);
@@ -243,6 +257,7 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
     /**
      * @dev Execute pending role transfer
      * @param transferId The ID of the transfer to execute
+     * FIX #2: Check cancelled state separately
      */
     function executeRoleTransfer(
         uint256 transferId
@@ -250,6 +265,7 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
         RoleTransfer storage transfer = pendingTransfers[transferId];
 
         require(!transfer.executed, "Transfer already executed");
+        require(!transfer.cancelled, "Transfer was cancelled"); // FIX #2
         require(
             block.timestamp >= transfer.executeAfter,
             "Transfer still in timelock"
@@ -276,6 +292,7 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
     /**
      * @dev Cancel pending role transfer
      * @param transferId The ID of the transfer to cancel
+     * FIX #2: Mark as cancelled instead of executed
      */
     function cancelRoleTransfer(
         uint256 transferId
@@ -283,8 +300,9 @@ contract AgriChainAccessControl is AccessControl, Pausable, ReentrancyGuard {
         RoleTransfer storage transfer = pendingTransfers[transferId];
 
         require(!transfer.executed, "Transfer already executed");
+        require(!transfer.cancelled, "Transfer already cancelled"); // FIX #2
 
-        transfer.executed = true; // Mark as executed to prevent execution
+        transfer.cancelled = true; // FIX #2: Mark as cancelled, not executed
 
         emit RoleTransferCancelled(transferId, transfer.role, msg.sender);
     }

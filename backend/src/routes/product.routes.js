@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const productController = require('../controllers/product.controller');
 
 // Public routes
@@ -13,35 +13,35 @@ router.get('/:productId/verify', productController.verifyProduct);
 // Protected routes (Farmers)
 router.post(
   '/register',
-  protect,
-  authorize('farmer'),
+  authenticate,
+  requireRole('farmer'),
   productController.registerProduct
 );
 
 router.put(
   '/:productId',
-  protect,
-  authorize('farmer', 'admin'),
+  authenticate,
+  requireRole('farmer', 'admin'),
   productController.updateProduct
 );
 
 router.delete(
   '/:productId',
-  protect,
-  authorize('farmer', 'admin'),
+  authenticate,
+  requireRole('farmer', 'admin'),
   productController.deleteProduct
 );
 
 router.post(
   '/:productId/quality-check',
-  protect,
-  authorize('farmer', 'admin'),
+  authenticate,
+  requireRole('farmer', 'admin'),
   productController.addQualityCheck
 );
 
 router.get(
   '/farmer/:farmerId',
-  protect,
+  authenticate,
   productController.getFarmerProducts
 );
 
