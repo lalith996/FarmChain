@@ -61,11 +61,12 @@ export default function RegisterPage() {
 
       // Step 1: Request nonce from backend
       const nonceResponse = await authAPI.requestNonce(address);
-      const nonce = nonceResponse.nonce;
+      const { nonce } = nonceResponse.data; // Backend wraps in { success, data, message }
 
-      // Step 2: Sign the message with wallet
-      const message = `Welcome to FarmChain!\n\nPlease sign this message to verify your wallet ownership.\n\nWallet: ${address}\nNonce: ${nonce}`;
-      
+      // Step 2: Sign the message with wallet (MUST match backend format exactly)
+      const timestamp = Date.now(); // Unix timestamp in milliseconds
+      const message = `Sign this message to login to AgriChain.\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+
       const signature = await signMessageAsync({ message });
 
       // Step 3: Register user with signature
@@ -73,10 +74,11 @@ export default function RegisterPage() {
         walletAddress: address,
         signature,
         message,
+        nonce,
         role: formData.role.toUpperCase(),
         profile: {
           name: formData.name,
-          email: formData.email || undefined,
+          email: formData.email, // Required field
           phone: formData.phone || undefined,
           location: {
             address: formData.address || undefined,
@@ -89,10 +91,18 @@ export default function RegisterPage() {
 
       const response = await authAPI.register(registerData);
 
-      // Step 4: Store auth data
-      login(response.data.user, response.data.token);
+      // Step 4: Store auth data (unwrap backend response structure)
+      const { user, accessToken, refreshToken } = response.data;
 
-      toast.success('Registration successful! Welcome to FarmChain 🎉');
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('authToken', accessToken); // For authStore compatibility
+
+      // Update auth store
+      login(user, accessToken);
+
+      toast.success(`Welcome to FarmChain, ${user.profile?.name || 'User'}! 🎉`);
       
       // Redirect based on role
       if (formData.role === 'admin') {
@@ -317,7 +327,7 @@ export default function RegisterPage() {
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  Email Address *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -326,6 +336,7 @@ export default function RegisterPage() {
                   <input
                     type="email"
                     id="email"
+                    required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"

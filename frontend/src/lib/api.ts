@@ -178,10 +178,11 @@ export const authAPI = {
   },
 
   // Verify signature and login
-  login: async (walletAddress: string, signature: string, nonce: string) => {
+  login: async (walletAddress: string, signature: string, message: string, nonce: string) => {
     const response = await apiClient.post('/auth/login', {
       walletAddress,
       signature,
+      message,
       nonce,
     });
     return response.data;
@@ -191,12 +192,19 @@ export const authAPI = {
   register: async (userData: {
     walletAddress: string;
     signature: string;
+    message: string;
     nonce: string;
     role: string;
     profile: {
       name: string;
       email: string;
       phone?: string;
+      location?: {
+        address?: string;
+        city: string;
+        state: string;
+        country: string;
+      };
     };
   }) => {
     const response = await apiClient.post('/auth/register', userData);
