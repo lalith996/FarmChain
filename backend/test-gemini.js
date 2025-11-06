@@ -1,8 +1,17 @@
 // Quick test script for Gemini API
 const axios = require('axios');
+require('dotenv').config();
 
-const GEMINI_API_KEY = 'AIzaSyBxko4Wjbkl-gws3mygvoyef0dzIT48BjI';
+// Load API key from environment variable
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+// Validate API key
+if (!GEMINI_API_KEY) {
+  console.error('❌ ERROR: GEMINI_API_KEY environment variable is not set');
+  console.log('\n💡 Please add GEMINI_API_KEY to your .env file');
+  process.exit(1);
+}
 
 async function testGeminiAPI() {
   console.log('🧪 Testing Gemini API...\n');

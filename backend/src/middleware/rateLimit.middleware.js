@@ -71,10 +71,14 @@ const rateLimitByRole = (action, windowType = 'minute') => {
 
       next();
     } catch (error) {
-      console.error('Rate limit error:', error);
-      // On error, allow request but log the issue
-      console.error('Rate limiting failed - allowing request');
-      next();
+      logger.error('Rate limit error:', { error: error.message, stack: error.stack });
+      // SECURITY FIX: Fail closed - don't allow request if rate limiting fails
+      // This prevents DoS attacks when Redis is down
+      return res.status(503).json({
+        success: false,
+        message: 'Service temporarily unavailable. Please try again later.',
+        code: 'RATE_LIMIT_SERVICE_ERROR'
+      });
     }
   };
 };

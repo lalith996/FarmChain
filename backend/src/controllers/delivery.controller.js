@@ -48,7 +48,7 @@ exports.addUpdate = async (req, res) => {
       message: 'Delivery update added successfully'
     });
   } catch (error) {
-    console.error('Error adding delivery update:', error);
+    logger.error('Error adding delivery update:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to add delivery update'
@@ -72,7 +72,7 @@ exports.getOrderUpdates = async (req, res) => {
       data: updates
     });
   } catch (error) {
-    console.error('Error fetching delivery updates:', error);
+    logger.error('Error fetching delivery updates:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch delivery updates'
@@ -103,7 +103,7 @@ exports.getLatestUpdate = async (req, res) => {
       data: update
     });
   } catch (error) {
-    console.error('Error fetching latest update:', error);
+    logger.error('Error fetching latest update:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch latest update'
@@ -157,7 +157,7 @@ exports.getTimeline = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching timeline:', error);
+    logger.error('Error fetching timeline:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch timeline'

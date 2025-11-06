@@ -103,7 +103,7 @@ exports.generateInvoice = async (req, res) => {
       message: 'Invoice generated successfully'
     });
   } catch (error) {
-    console.error('Error generating invoice:', error);
+    logger.error('Error generating invoice:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to generate invoice'
@@ -145,7 +145,7 @@ exports.getInvoice = async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    logger.error('Error fetching invoice:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch invoice'
@@ -187,7 +187,7 @@ exports.getInvoiceByOrder = async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    logger.error('Error fetching invoice:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch invoice'
@@ -242,7 +242,7 @@ exports.getUserInvoices = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
+    logger.error('Error fetching invoices:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch invoices'
@@ -289,7 +289,7 @@ exports.updatePaymentStatus = async (req, res) => {
       message: 'Payment status updated successfully'
     });
   } catch (error) {
-    console.error('Error updating payment status:', error);
+    logger.error('Error updating payment status:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to update payment status'
@@ -334,7 +334,7 @@ exports.generatePDF = async (req, res) => {
       message: 'PDF generation not yet implemented. Use this data to generate PDF on frontend.'
     });
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    logger.error('Error generating PDF:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to generate PDF'

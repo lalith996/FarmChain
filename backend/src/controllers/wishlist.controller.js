@@ -23,7 +23,7 @@ exports.getWishlists = async (req, res) => {
       count: wishlists.length
     });
   } catch (error) {
-    console.error('Error fetching wishlists:', error);
+    logger.error('Error fetching wishlists:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch wishlists' 
@@ -58,7 +58,7 @@ exports.getWishlistById = async (req, res) => {
 
     res.json({ success: true, data: wishlist });
   } catch (error) {
-    console.error('Error fetching wishlist:', error);
+    logger.error('Error fetching wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch wishlist' 
@@ -94,7 +94,7 @@ exports.createWishlist = async (req, res) => {
       message: 'Wishlist created successfully'
     });
   } catch (error) {
-    console.error('Error creating wishlist:', error);
+    logger.error('Error creating wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to create wishlist' 
@@ -181,7 +181,7 @@ exports.addToWishlist = async (req, res) => {
       message: 'Product added to wishlist'
     });
   } catch (error) {
-    console.error('Error adding to wishlist:', error);
+    logger.error('Error adding to wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to add product to wishlist' 
@@ -218,7 +218,7 @@ exports.removeFromWishlist = async (req, res) => {
       message: 'Product removed from wishlist'
     });
   } catch (error) {
-    console.error('Error removing from wishlist:', error);
+    logger.error('Error removing from wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to remove product from wishlist' 
@@ -257,7 +257,7 @@ exports.updateWishlist = async (req, res) => {
       message: 'Wishlist updated successfully'
     });
   } catch (error) {
-    console.error('Error updating wishlist:', error);
+    logger.error('Error updating wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update wishlist' 
@@ -299,7 +299,7 @@ exports.deleteWishlist = async (req, res) => {
       message: 'Wishlist deleted successfully' 
     });
   } catch (error) {
-    console.error('Error deleting wishlist:', error);
+    logger.error('Error deleting wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to delete wishlist' 
@@ -334,7 +334,7 @@ exports.getPublicWishlist = async (req, res) => {
 
     res.json({ success: true, data: wishlist });
   } catch (error) {
-    console.error('Error fetching public wishlist:', error);
+    logger.error('Error fetching public wishlist:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch wishlist' 
@@ -385,7 +385,7 @@ exports.updateWishlistItem = async (req, res) => {
       message: 'Wishlist item updated'
     });
   } catch (error) {
-    console.error('Error updating wishlist item:', error);
+    logger.error('Error updating wishlist item:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update wishlist item' 

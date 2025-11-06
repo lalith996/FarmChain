@@ -286,9 +286,12 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
     filter['verification.kycStatus'] = req.query.kycStatus;
   }
 
-  // Add search functionality
+  // Add search functionality with regex escape to prevent ReDoS attacks
   if (req.query.search) {
-    const searchRegex = new RegExp(req.query.search, 'i');
+    // Escape special regex characters to prevent ReDoS vulnerability
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const sanitizedSearch = escapeRegex(req.query.search.toString());
+    const searchRegex = new RegExp(sanitizedSearch, 'i');
     filter.$or = [
       { 'profile.name': searchRegex },
       { 'profile.email': searchRegex },

@@ -44,7 +44,7 @@ exports.saveComparison = async (req, res) => {
       message: 'Comparison saved successfully'
     });
   } catch (error) {
-    console.error('Error saving comparison:', error);
+    logger.error('Error saving comparison:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to save comparison'
@@ -89,7 +89,7 @@ exports.getComparison = async (req, res) => {
       data: comparison
     });
   } catch (error) {
-    console.error('Error fetching comparison:', error);
+    logger.error('Error fetching comparison:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch comparison'
@@ -148,7 +148,7 @@ exports.compareProducts = async (req, res) => {
       data: matrix
     });
   } catch (error) {
-    console.error('Error comparing products:', error);
+    logger.error('Error comparing products:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to compare products'
@@ -180,7 +180,7 @@ exports.deleteComparison = async (req, res) => {
       message: 'Comparison deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting comparison:', error);
+    logger.error('Error deleting comparison:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to delete comparison'
