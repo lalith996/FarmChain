@@ -12,7 +12,7 @@ import {
   PhoneIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
-import { authAPI } from '@/lib/api';
+import { authAPI, handleWeb3Error } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 
@@ -60,8 +60,8 @@ export default function RegisterPage() {
       setLoading(true);
 
       // Step 1: Request nonce from backend
-      const nonceResponse = await authAPI.getNonce(address);
-      const nonce = nonceResponse.data.nonce;
+      const nonceResponse = await authAPI.requestNonce(address);
+      const nonce = nonceResponse.nonce;
 
       // Step 2: Sign the message with wallet
       const message = `Welcome to FarmChain!\n\nPlease sign this message to verify your wallet ownership.\n\nWallet: ${address}\nNonce: ${nonce}`;
@@ -102,7 +102,9 @@ export default function RegisterPage() {
       }
     } catch (error: any) {
       console.error('Registration failed:', error);
-      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
+      // Use handleWeb3Error to properly extract error message from Web3/Wagmi/API errors
+      const errorMessage = handleWeb3Error(error);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -10,7 +10,7 @@ import {
   BoltIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
-import { authAPI, handleApiError } from '@/lib/api';
+import { authAPI, handleApiError, handleWeb3Error } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -73,6 +73,8 @@ export default function LoginPage() {
       }, 500);
     } catch (error: unknown) {
       console.error('Login failed:', error);
+
+      // First try to handle as API error
       const apiError = handleApiError(error);
 
       // Handle specific error cases
@@ -83,8 +85,13 @@ export default function LoginPage() {
         toast.error('Signature verification failed. Please try again.');
       } else if (apiError.code === 'NETWORK_ERROR') {
         toast.error('Unable to connect to server. Please check your connection.');
+      } else if (apiError.code === 'ACTION_REJECTED' || (error as any)?.code === 4001) {
+        // Handle wallet signature rejection
+        toast.error('Transaction rejected. Please try again.');
       } else {
-        toast.error(apiError.message || 'Login failed. Please try again.');
+        // Use handleWeb3Error for better error messages
+        const errorMessage = handleWeb3Error(error);
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);
