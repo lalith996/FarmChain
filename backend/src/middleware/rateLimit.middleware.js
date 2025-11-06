@@ -1,5 +1,57 @@
 const RateLimitTracker = require('../models/RateLimitTracker.model');
 const Role = require('../models/Role.model');
+const logger = require('../utils/logger');
+
+// FIX H2.2: Shared rate limit store with automatic cleanup
+const ipLimits = new Map();
+let cleanupIntervalId = null;
+
+/**
+ * Cleanup old entries from rate limit cache
+ * Runs every 5 minutes to prevent memory leak
+ */
+function startCleanupInterval() {
+  if (cleanupIntervalId) {
+    return; // Already running
+  }
+
+  cleanupIntervalId = setInterval(() => {
+    const now = Date.now();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+    let removedCount = 0;
+    for (const [key, data] of ipLimits.entries()) {
+      if (now - data.windowStart > maxAge) {
+        ipLimits.delete(key);
+        removedCount++;
+      }
+    }
+
+    if (removedCount > 0) {
+      logger.info(`Rate limit cleanup: removed ${removedCount} expired entries. Map size: ${ipLimits.size}`);
+    }
+  }, 5 * 60 * 1000); // Every 5 minutes
+
+  // Ensure cleanup stops on process exit
+  process.on('SIGTERM', stopCleanupInterval);
+  process.on('SIGINT', stopCleanupInterval);
+
+  logger.info('Rate limit cleanup interval started');
+}
+
+/**
+ * Stop cleanup interval
+ */
+function stopCleanupInterval() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+    logger.info('Rate limit cleanup interval stopped');
+  }
+}
+
+// Start cleanup when module is loaded
+startCleanupInterval();
 
 /**
  * Rate limiting middleware based on user role
@@ -48,7 +100,7 @@ const rateLimitByRole = (action, windowType = 'minute') => {
       if (!limitCheck.allowed) {
         return res.status(429).json({
           success: false,
-          message: limitCheck.isBlocked 
+          message: limitCheck.isBlocked
             ? 'You have been temporarily blocked due to rate limit violations'
             : 'Rate limit exceeded. Please try again later.',
           code: 'RATE_LIMIT_EXCEEDED',
@@ -85,11 +137,9 @@ const rateLimitByRole = (action, windowType = 'minute') => {
 
 /**
  * IP-based rate limiting for unauthenticated requests
+ * FIX H2.2: Now uses shared Map with automatic cleanup
  */
 const ipRateLimit = (action, limit, windowType = 'minute') => {
-  // Store in memory (in production, use Redis)
-  const ipLimits = new Map();
-
   return async (req, res, next) => {
     const ip = req.ip;
     const now = Date.now();
@@ -111,9 +161,13 @@ const ipRateLimit = (action, limit, windowType = 'minute') => {
       // Create new window
       limitData = {
         windowStart: now,
-        count: 0
+        count: 0,
+        lastAccess: now
       };
       ipLimits.set(key, limitData);
+    } else {
+      // Update last access time
+      limitData.lastAccess = now;
     }
 
     // Check limit
@@ -159,7 +213,7 @@ const customActionLimit = (action, maxCount, windowMinutes) => {
       return next();
     }
 
-    const windowType = windowMinutes <= 1 ? 'minute' : 
+    const windowType = windowMinutes <= 1 ? 'minute' :
                       windowMinutes <= 60 ? 'hour' : 'day';
 
     const limitCheck = await RateLimitTracker.checkLimit(
@@ -223,7 +277,7 @@ const loginAttemptLimit = async (req, res, next) => {
 
   // Use IP + wallet address for rate limiting
   const key = `${req.ip}:${walletAddress.toLowerCase()}`;
-  
+
   // 5 attempts per 15 minutes
   return customActionLimit('login_attempt', 5, 15)(req, res, next);
 };
@@ -239,6 +293,16 @@ const globalApiLimit = (req, res, next) => {
   }
 };
 
+/**
+ * Get rate limit statistics (for monitoring/debugging)
+ */
+const getRateLimitStats = () => {
+  return {
+    totalEntries: ipLimits.size,
+    cleanupIntervalActive: !!cleanupIntervalId
+  };
+};
+
 module.exports = {
   rateLimitByRole,
   ipRateLimit,
@@ -247,5 +311,7 @@ module.exports = {
   productCreationLimit,
   orderCreationLimit,
   loginAttemptLimit,
-  globalApiLimit
+  globalApiLimit,
+  getRateLimitStats,
+  stopCleanupInterval // For testing
 };
