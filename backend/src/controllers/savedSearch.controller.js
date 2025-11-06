@@ -28,7 +28,7 @@ exports.saveSearch = async (req, res) => {
       message: 'Search saved successfully'
     });
   } catch (error) {
-    console.error('Error saving search:', error);
+    logger.error('Error saving search:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to save search'
@@ -51,7 +51,7 @@ exports.getSavedSearches = async (req, res) => {
       data: searches
     });
   } catch (error) {
-    console.error('Error fetching saved searches:', error);
+    logger.error('Error fetching saved searches:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch saved searches'
@@ -90,7 +90,7 @@ exports.updateSavedSearch = async (req, res) => {
       message: 'Saved search updated successfully'
     });
   } catch (error) {
-    console.error('Error updating saved search:', error);
+    logger.error('Error updating saved search:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to update saved search'
@@ -122,7 +122,7 @@ exports.deleteSavedSearch = async (req, res) => {
       message: 'Saved search deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting saved search:', error);
+    logger.error('Error deleting saved search:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to delete saved search'
@@ -155,7 +155,7 @@ exports.useSavedSearch = async (req, res) => {
       data: savedSearch
     });
   } catch (error) {
-    console.error('Error using saved search:', error);
+    logger.error('Error using saved search:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to use saved search'

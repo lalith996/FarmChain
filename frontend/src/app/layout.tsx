@@ -4,6 +4,7 @@ import './globals.css';
 import { Web3Provider } from '@/components/providers/Web3Provider';
 import { Toaster } from 'react-hot-toast';
 import { ChatWidget } from '@/components/chatbot/ChatWidget';
+import { PageErrorBoundary } from '@/components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,34 +21,36 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <Web3Provider>
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
+        <PageErrorBoundary>
+          <Web3Provider>
+            {children}
+            <Toaster
+              position="top-right"
+              toastOptions={{
                 duration: 3000,
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
+                style: {
+                  background: '#363636',
+                  color: '#fff',
                 },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#fff',
+                  },
                 },
-              },
-            }}
-          />
-          <ChatWidget />
-        </Web3Provider>
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+            <ChatWidget />
+          </Web3Provider>
+        </PageErrorBoundary>
       </body>
     </html>
   );

@@ -42,7 +42,7 @@ exports.createSubscription = async (req, res) => {
       message: 'Subscription created successfully'
     });
   } catch (error) {
-    console.error('Error creating subscription:', error);
+    logger.error('Error creating subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to create subscription'
@@ -70,7 +70,7 @@ exports.getUserSubscriptions = async (req, res) => {
       data: subscriptions
     });
   } catch (error) {
-    console.error('Error fetching subscriptions:', error);
+    logger.error('Error fetching subscriptions:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch subscriptions'
@@ -102,7 +102,7 @@ exports.getSubscription = async (req, res) => {
       data: subscription
     });
   } catch (error) {
-    console.error('Error fetching subscription:', error);
+    logger.error('Error fetching subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch subscription'
@@ -140,7 +140,7 @@ exports.updateSubscription = async (req, res) => {
       message: 'Subscription updated successfully'
     });
   } catch (error) {
-    console.error('Error updating subscription:', error);
+    logger.error('Error updating subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to update subscription'
@@ -176,7 +176,7 @@ exports.pauseSubscription = async (req, res) => {
       message: 'Subscription paused successfully'
     });
   } catch (error) {
-    console.error('Error pausing subscription:', error);
+    logger.error('Error pausing subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to pause subscription'
@@ -211,7 +211,7 @@ exports.resumeSubscription = async (req, res) => {
       message: 'Subscription resumed successfully'
     });
   } catch (error) {
-    console.error('Error resuming subscription:', error);
+    logger.error('Error resuming subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to resume subscription'
@@ -244,7 +244,7 @@ exports.cancelSubscription = async (req, res) => {
       message: 'Subscription cancelled successfully'
     });
   } catch (error) {
-    console.error('Error cancelling subscription:', error);
+    logger.error('Error cancelling subscription:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to cancel subscription'
@@ -268,7 +268,7 @@ exports.getDueSubscriptions = async (req, res) => {
       count: dueSubscriptions.length
     });
   } catch (error) {
-    console.error('Error fetching due subscriptions:', error);
+    logger.error('Error fetching due subscriptions:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch due subscriptions'

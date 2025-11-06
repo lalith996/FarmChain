@@ -3,9 +3,12 @@ const logger = require('../utils/logger');
 
 const connectDB = async () => {
   try {
+    // Updated connection options (removed deprecated useNewUrlParser and useUnifiedTopology)
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      serverSelectionTimeoutMS: 5000, // Timeout for selecting a server
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      family: 4, // Use IPv4, skip trying IPv6
     });
 
     logger.info(`✅ MongoDB Connected: ${conn.connection.host}`);

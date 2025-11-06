@@ -54,7 +54,7 @@ exports.setBulkPricing = async (req, res) => {
       message: 'Bulk pricing set successfully'
     });
   } catch (error) {
-    console.error('Error setting bulk pricing:', error);
+    logger.error('Error setting bulk pricing:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to set bulk pricing'
@@ -86,7 +86,7 @@ exports.getBulkPricing = async (req, res) => {
       data: bulkPricing
     });
   } catch (error) {
-    console.error('Error fetching bulk pricing:', error);
+    logger.error('Error fetching bulk pricing:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch bulk pricing'
@@ -152,7 +152,7 @@ exports.calculatePrice = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error calculating price:', error);
+    logger.error('Error calculating price:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to calculate price'
@@ -189,7 +189,7 @@ exports.getSellerBulkPricing = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching seller bulk pricing:', error);
+    logger.error('Error fetching seller bulk pricing:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch bulk pricing'
@@ -221,7 +221,7 @@ exports.deleteBulkPricing = async (req, res) => {
       message: 'Bulk pricing deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting bulk pricing:', error);
+    logger.error('Error deleting bulk pricing:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to delete bulk pricing'
@@ -255,7 +255,7 @@ exports.toggleBulkPricing = async (req, res) => {
       message: `Bulk pricing ${bulkPricing.isActive ? 'activated' : 'deactivated'}`
     });
   } catch (error) {
-    console.error('Error toggling bulk pricing:', error);
+    logger.error('Error toggling bulk pricing:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to toggle bulk pricing'

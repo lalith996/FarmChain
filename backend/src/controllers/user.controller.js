@@ -137,11 +137,14 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
     filter['verification.kycStatus'] = req.query.kycStatus;
   }
 
+  // Add search with sanitization to prevent NoSQL injection
   if (req.query.search) {
+    const { sanitizeForRegex } = require('../utils/sanitize');
+    const sanitizedSearch = sanitizeForRegex(req.query.search);
     filter.$or = [
-      { 'profile.name': { $regex: req.query.search, $options: 'i' } },
-      { 'profile.email': { $regex: req.query.search, $options: 'i' } },
-      { walletAddress: { $regex: req.query.search, $options: 'i' } }
+      { 'profile.name': { $regex: sanitizedSearch, $options: 'i' } },
+      { 'profile.email': { $regex: sanitizedSearch, $options: 'i' } },
+      { walletAddress: { $regex: sanitizedSearch, $options: 'i' } }
     ];
   }
 

@@ -1,8 +1,14 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 
-const GEMINI_API_KEY = 'AIzaSyBxko4Wjbkl-gws3mygvoyef0dzIT48BjI';
+// Load API key from environment variable
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+// Validate API key on service load
+if (!GEMINI_API_KEY) {
+  logger.error('GEMINI_API_KEY environment variable is not set. AI chat features will be disabled.');
+}
 
 /**
  * FarmChain System Prompt - Tuned for agricultural blockchain platform
@@ -69,6 +75,12 @@ Remember: You're helping revolutionize agriculture through blockchain technology
  */
 const generateGeminiResponse = async (userMessage, conversationHistory = []) => {
   try {
+    // Check if API key is configured
+    if (!GEMINI_API_KEY) {
+      logger.warn('Gemini API key not configured, skipping AI generation');
+      return null;
+    }
+
     // Build conversation context
     let contextText = FARMCHAIN_SYSTEM_PROMPT + '\n\n';
     

@@ -35,7 +35,7 @@ exports.generateProductQR = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error generating QR code:', error);
+    logger.error('Error generating QR code:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to generate QR code'
@@ -92,7 +92,7 @@ exports.verifyProduct = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error verifying product:', error);
+    logger.error('Error verifying product:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to verify product'
@@ -156,7 +156,7 @@ exports.verifyQRData = async (req, res) => {
       data: verification
     });
   } catch (error) {
-    console.error('Error verifying QR data:', error);
+    logger.error('Error verifying QR data:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to verify QR data'
@@ -216,7 +216,7 @@ exports.getProductHistory = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching product history:', error);
+    logger.error('Error fetching product history:', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch product history'
