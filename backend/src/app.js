@@ -33,6 +33,10 @@ const bulkPricingRoutes = require('./routes/bulkPricing.routes');
 const savedSearchRoutes = require('./routes/savedSearch.routes');
 const qrRoutes = require('./routes/qr.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
+const farmerRoutes = require('./routes/farmer.routes');
+const retailerRoutes = require('./routes/retailer.routes');
+const distributorRoutes = require('./routes/distributor.routes');
+const consumerRoutes = require('./routes/consumer.routes');
 
 const app = express();
 
@@ -97,6 +101,12 @@ app.use(`/api/${apiVersion}/bulk-pricing`, bulkPricingRoutes);
 app.use(`/api/${apiVersion}/saved-searches`, savedSearchRoutes);
 app.use(`/api/${apiVersion}/qr`, qrRoutes);
 app.use(`/api/${apiVersion}/subscriptions`, subscriptionRoutes);
+
+// Role-specific routes
+app.use(`/api/${apiVersion}/farmer`, farmerRoutes);
+app.use(`/api/${apiVersion}/retailer`, retailerRoutes);
+app.use(`/api/${apiVersion}/distributor`, distributorRoutes);
+app.use(`/api/${apiVersion}/consumer`, consumerRoutes);
 
 // 404 Handler
 app.use((req, res) => {
